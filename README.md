@@ -1,4 +1,4 @@
-# 投标标书智能分析监督系统 (BASS-MVP)
+# Bid Analysis Supervision System
 
 > Bid Analysis Supervision System — AI-powered bid document analysis for detecting collusion, bid rigging, and affiliated bidding patterns.
 
