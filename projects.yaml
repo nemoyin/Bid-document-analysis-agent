@@ -1,0 +1,122 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - strong [ref=e8]: 投标标书智能分析监督系统
+      - menu [ref=e9]:
+        - menuitem "project 项目分析" [ref=e10] [cursor=pointer]:
+          - img "project" [ref=e11]:
+            - img [ref=e12]
+          - generic [ref=e14]: 项目分析
+        - menuitem "file-text 分析报告" [ref=e15] [cursor=pointer]:
+          - img "file-text" [ref=e16]:
+            - img [ref=e17]
+          - generic [ref=e19]: 分析报告
+        - menuitem "setting 系统设置" [ref=e20] [cursor=pointer]:
+          - img "setting" [ref=e21]:
+            - img [ref=e22]
+          - generic [ref=e24]: 系统设置
+  - main [ref=e26]:
+    - generic [ref=e27]:
+      - generic [ref=e28]:
+        - heading "项目列表" [level=3] [ref=e29]
+        - generic [ref=e30]:
+          - generic [ref=e33]:
+            - generic [ref=e34]:
+              - img "search" [ref=e36]:
+                - img [ref=e37]
+              - searchbox "搜索项目名称..." [ref=e39]
+            - button "search" [ref=e42] [cursor=pointer]:
+              - img "search" [ref=e44]:
+                - img [ref=e45]
+          - button "plus 创建项目" [ref=e48] [cursor=pointer]:
+            - img "plus" [ref=e50]:
+              - img [ref=e51]
+            - generic [ref=e54]: 创建项目
+      - generic [ref=e59]:
+        - table [ref=e63]:
+          - rowgroup [ref=e70]:
+            - row "项目名称 描述 文档数 风险等级 创建时间" [ref=e71]:
+              - columnheader "项目名称" [ref=e72]
+              - columnheader "描述" [ref=e73]
+              - columnheader "文档数" [ref=e74]
+              - columnheader "风险等级" [ref=e75]
+              - columnheader "创建时间" [ref=e76]
+          - rowgroup [ref=e77]:
+            - row "folder-open QA-E2E-TEST 端到端验证测试 0 未分析 2026/6/13 03:17:29" [ref=e78] [cursor=pointer]:
+              - cell "folder-open QA-E2E-TEST" [ref=e79]:
+                - generic [ref=e80]:
+                  - img "folder-open" [ref=e81]:
+                    - img [ref=e82]
+                  - text: QA-E2E-TEST
+              - cell "端到端验证测试" [ref=e84]
+              - cell "0" [ref=e85]
+              - cell "未分析" [ref=e86]:
+                - generic [ref=e87]: 未分析
+              - cell "2026/6/13 03:17:29" [ref=e88]
+            - row "folder-open QA-E2E-TEST e2e test 0 未分析 2026/6/13 03:17:14" [ref=e89] [cursor=pointer]:
+              - cell "folder-open QA-E2E-TEST" [ref=e90]:
+                - generic [ref=e91]:
+                  - img "folder-open" [ref=e92]:
+                    - img [ref=e93]
+                  - text: QA-E2E-TEST
+              - cell "e2e test" [ref=e95]
+              - cell "0" [ref=e96]
+              - cell "未分析" [ref=e97]:
+                - generic [ref=e98]: 未分析
+              - cell "2026/6/13 03:17:14" [ref=e99]
+            - row "folder-open QA-E2E-TEST e2e test 0 未分析 2026/6/13 03:17:10" [ref=e100] [cursor=pointer]:
+              - cell "folder-open QA-E2E-TEST" [ref=e101]:
+                - generic [ref=e102]:
+                  - img "folder-open" [ref=e103]:
+                    - img [ref=e104]
+                  - text: QA-E2E-TEST
+              - cell "e2e test" [ref=e106]
+              - cell "0" [ref=e107]
+              - cell "未分析" [ref=e108]:
+                - generic [ref=e109]: 未分析
+              - cell "2026/6/13 03:17:10" [ref=e110]
+            - row "folder-open QA-E2E-TEST ??????? 0 未分析 2026/6/13 03:15:16" [ref=e111] [cursor=pointer]:
+              - cell "folder-open QA-E2E-TEST" [ref=e112]:
+                - generic [ref=e113]:
+                  - img "folder-open" [ref=e114]:
+                    - img [ref=e115]
+                  - text: QA-E2E-TEST
+              - cell "???????" [ref=e117]
+              - cell "0" [ref=e118]
+              - cell "未分析" [ref=e119]:
+                - generic [ref=e120]: 未分析
+              - cell "2026/6/13 03:15:16" [ref=e121]
+            - row "folder-open QA-E2E-TEST 端到端验证测试 0 未分析 2026/6/13 03:14:50" [ref=e122] [cursor=pointer]:
+              - cell "folder-open QA-E2E-TEST" [ref=e123]:
+                - generic [ref=e124]:
+                  - img "folder-open" [ref=e125]:
+                    - img [ref=e126]
+                  - text: QA-E2E-TEST
+              - cell "端到端验证测试" [ref=e128]
+              - cell "0" [ref=e129]
+              - cell "未分析" [ref=e130]:
+                - generic [ref=e131]: 未分析
+              - cell "2026/6/13 03:14:50" [ref=e132]
+            - row "folder-open PIPELINE-TEST test 0 未分析 2026/6/13 03:08:55" [ref=e133] [cursor=pointer]:
+              - cell "folder-open PIPELINE-TEST" [ref=e134]:
+                - generic [ref=e135]:
+                  - img "folder-open" [ref=e136]:
+                    - img [ref=e137]
+                  - text: PIPELINE-TEST
+              - cell "test" [ref=e139]
+              - cell "0" [ref=e140]
+              - cell "未分析" [ref=e141]:
+                - generic [ref=e142]: 未分析
+              - cell "2026/6/13 03:08:55" [ref=e143]
+        - list [ref=e144]:
+          - listitem [ref=e145]: 共 6 个项目
+          - listitem "上一页" [ref=e146]:
+            - button "left" [disabled] [ref=e147]:
+              - img "left" [ref=e148]:
+                - img [ref=e149]
+          - listitem "1" [ref=e151] [cursor=pointer]:
+            - generic [ref=e152]: "1"
+          - listitem "下一页" [ref=e153]:
+            - button "right" [disabled] [ref=e154]:
+              - img "right" [ref=e155]:
+                - img [ref=e156]

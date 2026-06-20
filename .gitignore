@@ -1,0 +1,36 @@
+# Dependencies
+frontend/node_modules/
+
+# Build output
+dist/
+.vite/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# Test / tool directories
+.playwright-cli/
+.pytest_cache/
+.workbuddy/
+
+# Data directories
+data/
+test_data/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

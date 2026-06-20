@@ -1,0 +1,159 @@
+version: "3.8"
+
+services:
+  # ---- PostgreSQL 数据库 ----
+  postgres:
+    image: postgres:16.0
+    container_name: bass-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: bass_mvp
+      POSTGRES_USER: bass_user
+      POSTGRES_PASSWORD: bass_password
+      TZ: Asia/Shanghai
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bass_user -d bass_mvp"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bass-network
+
+  # ---- Redis 消息队列 & 缓存 ----
+  redis:
+    image: redis:7.2.0-alpine
+    container_name: bass-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-bass_redis_pass}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - bass-network
+
+  # ---- FastAPI 后端服务 ----
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: bass-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      APP_NAME: BASS-MVP
+      DEBUG: "false"
+      HOST: "0.0.0.0"
+      PORT: 8000
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: bass_mvp
+      POSTGRES_USER: bass_user
+      POSTGRES_PASSWORD: bass_password
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-bass_redis_pass}
+      GITEE_AI_API_KEY: ${GITEE_AI_API_KEY}
+      GITEE_AI_BASE_URL: https://ai.gitee.com/v1
+      GITEE_AI_MODEL: Qwen3-Embedding-8B
+      CHROMA_DB_PATH: /app/data/chromadb
+      UPLOAD_DIR: /app/data/uploads
+      LOG_LEVEL: INFO
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    ports:
+      - "8000:8000"
+    volumes:
+      - backend_data:/app/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://localhost:8000/api/v1/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - bass-network
+
+  # ---- Celery Worker ----
+  celery-worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: bass-celery-worker
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    environment:
+      APP_NAME: BASS-MVP
+      DEBUG: "false"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: bass_mvp
+      POSTGRES_USER: bass_user
+      POSTGRES_PASSWORD: bass_password
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-bass_redis_pass}
+      GITEE_AI_API_KEY: ${GITEE_AI_API_KEY}
+      GITEE_AI_BASE_URL: https://ai.gitee.com/v1
+      GITEE_AI_MODEL: Qwen3-Embedding-8B
+      CHROMA_DB_PATH: /app/data/chromadb
+      UPLOAD_DIR: /app/data/uploads
+      LOG_LEVEL: INFO
+    command: celery -A app.tasks.celery_app worker -l info -c 4
+    volumes:
+      - backend_data:/app/data
+    networks:
+      - bass-network
+
+  # ---- Flower (Celery 监控) ----
+  flower:
+    image: mher/flower:2.0.0
+    container_name: bass-flower
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:-bass_redis_pass}@redis:6379/0
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD:-bass_redis_pass}@redis:6379/0
+      FLOWER_PORT: 5555
+      FLOWER_BASIC_AUTH: ${FLOWER_USER:-admin}:${FLOWER_PASSWORD:-admin123}
+    ports:
+      - "5555:5555"
+    networks:
+      - bass-network
+
+networks:
+  bass-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  backend_data:
+    driver: local

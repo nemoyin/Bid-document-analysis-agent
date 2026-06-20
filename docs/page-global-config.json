@@ -1,0 +1,14 @@
+{
+  "slideStyle": "Business",
+  "colorScheme": "Deep Blue Tech Business",
+  "primaryColor": "#0F2A5E",
+  "accentColor1": "#2563EB",
+  "accentColor2": "#F59E0B",
+  "neutralColor": "#64748B",
+  "background": {
+    "type": "color",
+    "value": "#FFFFFF"
+  },
+  "fontTitle": "'Montserrat', 'Noto Sans SC', sans-serif",
+  "fontBody": "'Inter', 'Noto Sans SC', sans-serif"
+}
