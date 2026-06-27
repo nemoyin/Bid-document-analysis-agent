@@ -87,6 +87,38 @@ export const RISK_LEVEL_LABELS: Record<string, string> = {
   CRITICAL: '严重风险',
 };
 
+/** 单个维度的进度 */
+export interface ProgressDimension {
+  status: 'pending' | 'running' | 'completed';
+  completed: number;
+  total: number;
+}
+
+/** 6维度详细进度 */
+export interface ProgressDetail {
+  current_dimension: string | null;
+  dimensions: Record<string, ProgressDimension>;
+  issues_found: number;
+  overall_progress?: number;
+}
+
+/** 6维度元数据 */
+export interface DimensionMeta {
+  key: string;
+  label: string;
+  icon: string;
+  weight: number;
+}
+
+export const DIMENSION_META: DimensionMeta[] = [
+  { key: 'text_similarity',      label: '文本相似度',   icon: '📝', weight: 30 },
+  { key: 'structure_similarity', label: '目录结构相似', icon: '📑', weight: 15 },
+  { key: 'image_similarity',     label: '图片相似度',   icon: '🖼️', weight: 15 },
+  { key: 'table_similarity',     label: '表格相似度',   icon: '📊', weight: 10 },
+  { key: 'error_consistency',    label: '错别字一致性', icon: '✏️', weight: 20 },
+  { key: 'metadata_consistency', label: '元数据一致性', icon: '📋', weight: 10 },
+];
+
 /** 分析任务 */
 export interface AnalysisTask {
   id: string;
@@ -94,6 +126,12 @@ export interface AnalysisTask {
   status: string;
   task_type: string;
   progress: number;
+  progress_detail: ProgressDetail | null;
+  total_comparisons: number;
+  completed_comparisons: number;
+  issues_found: number;
+  estimated_seconds: number | null;
+  total_duration_ms: number | null;
   error_message: string | null;
   risk_score: number | null;
   risk_level: string | null;

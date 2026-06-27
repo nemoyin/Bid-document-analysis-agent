@@ -3,8 +3,6 @@
 包括统一响应格式、分页参数、枚举类型等。
 """
 
-from __future__ import annotations
-
 from enum import Enum
 from typing import Any, Generic, Optional, TypeVar
 

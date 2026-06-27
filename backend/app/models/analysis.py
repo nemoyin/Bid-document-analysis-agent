@@ -55,6 +55,24 @@ class AnalysisTask(Base, TimestampMixin):
     progress: Mapped[int] = mapped_column(
         Integer, default=0, comment="进度百分比 0-100"
     )
+    progress_detail: Mapped[Optional[dict]] = mapped_column(
+        JSON, nullable=True, comment="详细进度: 6维度状态 + current_dimension"
+    )
+    total_comparisons: Mapped[int] = mapped_column(
+        Integer, default=0, comment="总对比对数"
+    )
+    completed_comparisons: Mapped[int] = mapped_column(
+        Integer, default=0, comment="已完成对比对数"
+    )
+    issues_found: Mapped[int] = mapped_column(
+        Integer, default=0, comment="累计发现问题数"
+    )
+    estimated_seconds: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True, comment="预计剩余秒数 (ETA)"
+    )
+    total_duration_ms: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True, comment="任务实际耗时(毫秒)，完成后持久化"
+    )
     error_message: Mapped[Optional[str]] = mapped_column(
         Text, nullable=True, comment="错误信息（任务失败时）"
     )

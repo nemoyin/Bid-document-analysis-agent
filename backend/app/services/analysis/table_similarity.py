@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import uuid
 from decimal import Decimal
-from typing import Any
+from typing import Any, Optional, Callable, Awaitable
 
 from loguru import logger
 from sqlalchemy import select
@@ -124,6 +124,7 @@ async def analyze_table_similarity(
     project_id: uuid.UUID,
     analysis_task_id: uuid.UUID,
     db_session_factory,
+    on_progress: Optional[Callable[[int], Awaitable[None]]] = None,
 ) -> int:
     """分析项目文档间的表格相似度。
 
@@ -175,12 +176,15 @@ async def analyze_table_similarity(
             # 两两比较并更新 SimilarityResult
             updated_count = 0
             doc_ids = list(doc_tables.keys())
+            total_pairs = len(doc_ids) * (len(doc_ids) - 1) // 2
+            pair_count = 0
 
             from app.models.analysis import SimilarityResult as SimResultModel
             from sqlalchemy import or_
 
             for i in range(len(doc_ids)):
                 for j in range(i + 1, len(doc_ids)):
+                    pair_count += 1
                     doc_a = doc_ids[i]
                     doc_b = doc_ids[j]
 
@@ -205,6 +209,12 @@ async def analyze_table_similarity(
                             str(round(table_score * 100, 2))
                         )
                         updated_count += 1
+
+                    if on_progress and pair_count % max(1, total_pairs // 10) == 0:
+                        try:
+                            await on_progress(pair_count)
+                        except Exception:
+                            pass
 
             await db.commit()
             logger.info(

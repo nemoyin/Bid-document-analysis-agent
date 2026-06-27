@@ -9,7 +9,7 @@ import hashlib
 import re
 import uuid
 from collections import defaultdict
-from typing import Any, Optional
+from typing import Any, Optional, Callable, Awaitable
 
 from loguru import logger
 
@@ -340,6 +340,7 @@ async def analyze_errors(
     project_id: uuid.UUID,
     analysis_task_id: uuid.UUID,
     db_session_factory,
+    on_progress: Optional[Callable[[int], Awaitable[None]]] = None,
 ) -> int:
     """错误检测分析主入口。
 
@@ -349,6 +350,7 @@ async def analyze_errors(
         project_id: 项目ID
         analysis_task_id: 分析任务ID
         db_session_factory: 数据库会话工厂
+        on_progress: 可选的进度回调，参数为已完成文档数
 
     Returns:
         int: 写入的错误检测结果数量
@@ -372,12 +374,16 @@ async def analyze_errors(
 
             written_count = 0
             doc_texts_for_consistency: list[dict] = []
+            docs_with_text = [d for d in documents if d.content_text]
+            total_docs = len(docs_with_text)
+            doc_count = 0
 
             # ---- 1. 逐文档错别字检测 ----
             for doc in documents:
                 if not doc.content_text:
                     continue
 
+                doc_count += 1
                 typos = detect_typos(doc.content_text)
 
                 doc_texts_for_consistency.append({
@@ -403,6 +409,13 @@ async def analyze_errors(
                     )
                     db.add(error_entry)
                     written_count += 1
+
+                # 每完成一个文档，上报进度
+                if on_progress and doc_count % max(1, total_docs // 5) == 0:
+                    try:
+                        await on_progress(doc_count)
+                    except Exception:
+                        pass
 
             logger.info(
                 f"错别字检测完成: {len(documents)} 个文档, "

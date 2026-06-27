@@ -3,8 +3,6 @@
 包括分析任务、相似度结果、错误检测、图片相似等模型。
 """
 
-from __future__ import annotations
-
 import uuid
 from datetime import datetime
 from decimal import Decimal
@@ -37,6 +35,12 @@ class AnalysisTaskResponse(BaseModel):
     status: str = Field(..., description="任务状态")
     task_type: str = Field(..., description="任务类型")
     progress: int = Field(default=0, description="进度百分比")
+    progress_detail: Optional[dict] = Field(default=None, description="详细进度信息")
+    total_comparisons: int = Field(default=0, description="总对比对数")
+    completed_comparisons: int = Field(default=0, description="已完成对比对数")
+    issues_found: int = Field(default=0, description="已发现问题数")
+    estimated_seconds: Optional[int] = Field(default=None, description="预计剩余秒数")
+    total_duration_ms: Optional[int] = Field(default=None, description="实际耗时(毫秒)")
     error_message: Optional[str] = Field(default=None, description="错误信息")
     celery_task_id: Optional[str] = Field(default=None, description="Celery任务ID")
     risk_score: Optional[float] = Field(default=None, description="综合风险评分")
@@ -65,23 +69,8 @@ class AnalysisTaskResponse(BaseModel):
         return super().model_validate(obj, **kwargs)
 
 
-
-class AnalysisTaskDetailResponse(AnalysisTaskResponse):
-    """分析任务详情响应（含各项结果）。"""
-
-    similarity_results: list["SimilarityResultResponse"] = Field(
-        default_factory=list, description="相似度结果"
-    )
-    error_detection_results: list["ErrorDetectionResultResponse"] = Field(
-        default_factory=list, description="错误检测结果"
-    )
-    image_similarity_results: list["ImageSimilarityResultResponse"] = Field(
-        default_factory=list, description="图片相似结果"
-    )
-
-
 # ============================================================
-# 相似度结果 Schema
+# 相似度结果 Schema（必须在 AnalysisTaskDetailResponse 之前）
 # ============================================================
 
 
@@ -147,6 +136,25 @@ class ImageSimilarityResultResponse(BaseModel):
     similarity_score: Optional[Decimal] = Field(default=None, description="相似度")
 
     model_config = {"from_attributes": True}
+
+
+# ============================================================
+# 分析任务详情（依赖以上所有 Result 类型，放在最后）
+# ============================================================
+
+
+class AnalysisTaskDetailResponse(AnalysisTaskResponse):
+    """分析任务详情响应（含各项结果）。"""
+
+    similarity_results: list[SimilarityResultResponse] = Field(
+        default_factory=list, description="相似度结果"
+    )
+    error_detection_results: list[ErrorDetectionResultResponse] = Field(
+        default_factory=list, description="错误检测结果"
+    )
+    image_similarity_results: list[ImageSimilarityResultResponse] = Field(
+        default_factory=list, description="图片相似结果"
+    )
 
 
 # ============================================================

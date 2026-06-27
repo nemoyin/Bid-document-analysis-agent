@@ -1,0 +1,85 @@
+# ============================================================
+# BASS-MVP Docker Compose 部署配置
+# 投标标书智能分析监督系统
+# ============================================================
+# 启动: docker compose up -d
+# 停止: docker compose down
+# 日志: docker compose logs -f
+# ============================================================
+
+services:
+  # ============================================================
+  # 后端 API 服务 (FastAPI + Uvicorn)
+  # ============================================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: bass-mvp-backend:latest
+    container_name: bass-backend
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    environment:
+      APP_NAME: BASS-MVP
+      DEBUG: "false"
+      HOST: "0.0.0.0"
+      PORT: 8083
+      DATABASE_URL: sqlite+aiosqlite:///./data/bass.db
+      GITEE_AI_API_KEY: ${GITEE_AI_API_KEY:-}
+      GITEE_AI_BASE_URL: https://ai.gitee.com/v1
+      GITEE_AI_MODEL: Qwen3-Embedding-8B
+      CHROMA_DB_PATH: /app/backend/data/chromadb
+      UPLOAD_DIR: /app/backend/data/uploads
+      REPORT_DIR: /app/backend/data/reports
+      LOG_LEVEL: INFO
+      FRONTEND_DIST_DIR: /app/backend/data/frontend-dist
+      MAX_FILE_SIZE: "104857600"
+      CORS_ORIGINS: '["*"]'
+    volumes:
+      - bass_data:/app/backend/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://localhost:8083/api/v1/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - bass-network
+
+  # ============================================================
+  # 前端 Web 服务 (Nginx)
+  # ============================================================
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    image: bass-mvp-frontend:latest
+    container_name: bass-frontend
+    restart: unless-stopped
+    ports:
+      - "5873:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - bass-network
+
+networks:
+  bass-network:
+    driver: bridge
+
+volumes:
+  bass_data:
+    driver: local

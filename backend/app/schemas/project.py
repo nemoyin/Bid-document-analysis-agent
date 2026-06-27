@@ -49,26 +49,9 @@ class ProjectResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class ProjectDetailResponse(ProjectResponse):
-    """项目详情响应（含文档列表）。"""
-
-    documents: list["BidDocumentResponse"] = Field(default_factory=list, description="标书文档列表")
-    recent_tasks: list = Field(default_factory=list, description="最近分析任务")
-
-
 # ============================================================
-# 文档 Schema
+# 文档 Schema（必须在 ProjectDetailResponse 之前定义）
 # ============================================================
-
-
-class BidDocumentCreate(BaseModel):
-    """创建文档记录请求（上传后调用）。"""
-
-    project_id: uuid.UUID = Field(..., description="所属项目ID")
-    filename: str = Field(..., max_length=255, description="文件名")
-    file_path: str = Field(..., max_length=500, description="文件存储路径")
-    file_size: Optional[int] = Field(default=None, description="文件大小（字节）")
-    file_type: Optional[str] = Field(default=None, pattern="^(pdf|doc|docx)$", description="文件类型")
 
 
 class BidDocumentResponse(BaseModel):
@@ -87,9 +70,31 @@ class BidDocumentResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class BidDocumentCreate(BaseModel):
+    """创建文档记录请求（上传后调用）。"""
+
+    project_id: uuid.UUID = Field(..., description="所属项目ID")
+    filename: str = Field(..., max_length=255, description="文件名")
+    file_path: str = Field(..., max_length=500, description="文件存储路径")
+    file_size: Optional[int] = Field(default=None, description="文件大小（字节）")
+    file_type: Optional[str] = Field(default=None, pattern="^(pdf|doc|docx)$", description="文件类型")
+
+
 class BidDocumentDetailResponse(BidDocumentResponse):
     """文档详情响应（含文本内容和元数据）。"""
 
     content_text: Optional[str] = Field(default=None, description="提取的文本内容")
     file_metadata: Optional[dict] = Field(default=None, description="文件元数据")
     parsed_at: Optional[datetime] = Field(default=None, description="解析完成时间")
+
+
+# ============================================================
+# 项目详情（依赖 BidDocumentResponse，放在最后）
+# ============================================================
+
+
+class ProjectDetailResponse(ProjectResponse):
+    """项目详情响应（含文档列表）。"""
+
+    documents: list[BidDocumentResponse] = Field(default_factory=list, description="标书文档列表")
+    recent_tasks: list = Field(default_factory=list, description="最近分析任务")

@@ -38,7 +38,7 @@ const defaultSettings: SettingsData = {
     error_consistency_weight: 0.35,
     similarity_threshold: 0.8,
     chunk_size: 512,
-    max_file_size_mb: 50,
+    max_file_size_mb: 100,
   },
   risk_thresholds: {
     low: 0.3,

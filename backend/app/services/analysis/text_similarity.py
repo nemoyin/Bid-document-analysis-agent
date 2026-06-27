@@ -8,7 +8,7 @@ from __future__ import annotations
 import math
 import uuid
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any, Optional, Callable, Awaitable
 
 from loguru import logger
 from sqlalchemy import select
@@ -217,6 +217,7 @@ async def analyze_text_similarity(
     analysis_task_id: uuid.UUID,
     chroma_collection: Any,
     db_session_factory,
+    on_progress: Optional[Callable[[int], Awaitable[None]]] = None,
 ) -> int:
     """文本相似度分析入口。
 
@@ -228,6 +229,7 @@ async def analyze_text_similarity(
         analysis_task_id: 分析任务ID
         chroma_collection: ChromaDB 集合实例
         db_session_factory: 数据库会话工厂
+        on_progress: 可选的进度回调，参数为已完成对比对数
 
     Returns:
         int: 写入的相似度结果数量
@@ -272,6 +274,8 @@ async def analyze_text_similarity(
     threshold = getattr(settings, "SIMILARITY_THRESHOLD", 0.8)
 
     # 3. 两两比较（避免重复比较）
+    total_pairs = len(doc_ids) * (len(doc_ids) - 1) // 2
+    pair_count = 0
     all_pairs: list[SimilarityPair] = []
     for i in range(len(doc_ids)):
         for j in range(i + 1, len(doc_ids)):
@@ -281,6 +285,13 @@ async def analyze_text_similarity(
                 chunks_a, chunks_b, threshold=threshold
             )
             all_pairs.extend(pairs)
+            pair_count += 1
+            # 每完成一对文档对比，上报进度
+            if on_progress and pair_count % max(1, total_pairs // 10) == 0:
+                try:
+                    await on_progress(pair_count)
+                except Exception:
+                    pass  # 进度上报失败不影响主流程
 
     logger.info(f"chunk 级相似度计算完成: {len(all_pairs)} 对")
 

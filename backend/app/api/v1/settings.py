@@ -32,7 +32,7 @@ class AnalysisConfig(BaseModel):
     error_consistency_weight: float = Field(default=0.35, ge=0.0, le=1.0, description="错误一致性权重")
     similarity_threshold: float = Field(default=0.8, ge=0.0, le=1.0, description="文本相似度阈值")
     chunk_size: int = Field(default=512, ge=64, le=2048, description="文档分块大小")
-    max_file_size_mb: int = Field(default=50, ge=1, le=200, description="文件上传限制(MB)")
+    max_file_size_mb: int = Field(default=100, ge=1, le=200, description="文件上传限制(MB)")
 
 
 class RiskLevelThresholds(BaseModel):
@@ -98,7 +98,7 @@ def _to_response(data: dict) -> SettingsResponse:
             error_consistency_weight=data.get("error_consistency_weight", 0.35),
             similarity_threshold=data.get("similarity_threshold", 0.8),
             chunk_size=data.get("chunk_size", 512),
-            max_file_size_mb=data.get("max_file_size_mb", 50),
+            max_file_size_mb=data.get("max_file_size_mb", 100),
         ),
         risk_thresholds=RiskLevelThresholds(
             low=data.get("risk_low", 0.3),

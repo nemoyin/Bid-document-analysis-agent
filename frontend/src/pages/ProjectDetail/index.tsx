@@ -21,6 +21,7 @@ import { RISK_LEVEL_COLORS, RISK_LEVEL_LABELS } from '../../types';
 import RiskOverviewCard from './components/RiskOverviewCard';
 import SimilarityTable from './components/SimilarityTable';
 import ImageGallery from './components/ImageGallery';
+import AnalysisProgressPanel from './components/AnalysisProgressPanel';
 import styles from './index.module.css';
 
 const { Title, Text } = Typography;
@@ -157,23 +158,40 @@ const ProjectDetail: React.FC = () => {
       loadTasks();
 
       if (pollRef.current) clearInterval(pollRef.current);
+
+      // 轮询重试计数
+      let retryCount = 0;
+      const MAX_RETRIES = 5;
+
       pollRef.current = setInterval(async () => {
         try {
-          const detail = await analysisApi.getDetail(task.id);
-          setActiveTask(detail);
-          if (detail.status === 'completed' || detail.status === 'failed') {
+          // 使用轻量进度接口轮询
+          const progress = await analysisApi.getProgress(task.id);
+          setActiveTask(progress as AnalysisTaskDetail);
+          retryCount = 0; // 成功后重置重试计数
+
+          if (progress.status === 'completed' || progress.status === 'failed') {
             if (pollRef.current) clearInterval(pollRef.current);
             setAnalyzing(false);
+            // 任务结束后加载完整详情（含结果列表）
+            try {
+              const detail = await analysisApi.getDetail(task.id);
+              setActiveTask(detail);
+            } catch { /* 结果加载失败不影响进度展示 */ }
             loadTasks();
             loadProject();
-            if (detail.status === 'completed') message.success('分析完成');
-            else message.error(`分析失败: ${detail.error_message || '未知错误'}`);
+            if (progress.status === 'completed') message.success('分析完成');
+            else message.error(`分析失败: ${progress.error_message || '未知错误'}`);
           }
         } catch {
-          if (pollRef.current) clearInterval(pollRef.current);
-          setAnalyzing(false);
+          retryCount++;
+          if (retryCount >= MAX_RETRIES) {
+            if (pollRef.current) clearInterval(pollRef.current);
+            setAnalyzing(false);
+            message.warning('进度轮询中断（网络异常），请手动刷新查看状态');
+          }
         }
-      }, 3000);
+      }, 1500);
     } catch (err: any) {
       message.error(err.message || '启动分析失败');
       setAnalyzing(false);
@@ -255,7 +273,7 @@ const ProjectDetail: React.FC = () => {
             >
               <p className="ant-upload-drag-icon"><UploadOutlined /></p>
               <p className="ant-upload-text">{uploading ? '上传中...' : '点击或拖拽文件到此区域上传'}</p>
-              <p className="ant-upload-hint">支持 PDF、DOCX、DOC 格式，单文件最大 50MB</p>
+              <p className="ant-upload-hint">支持 PDF、DOCX、DOC 格式，单文件最大 100MB</p>
             </Upload.Dragger>
           </div>
           <Card title={`已上传文档 (${documents.length})`} bodyStyle={{ padding: 0 }}>
@@ -322,16 +340,13 @@ const ProjectDetail: React.FC = () => {
               </Button>
               <Button icon={<ReloadOutlined />} onClick={() => { loadTasks(); loadProject(); }}>刷新</Button>
             </Space>
-            {analyzing && activeTask && (
+            {(analyzing || activeTask?.status === 'completed' || activeTask?.status === 'failed') && (
               <Card size="small" style={{ marginTop: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                  <Progress type="circle" percent={activeTask.progress} size={60}
-                    status={activeTask.status === 'failed' ? 'exception' : 'active'} />
-                  <div>
-                    <Text strong>分析进度: {activeTask.progress}%</Text><br />
-                    <Text type="secondary">状态: {activeTask.status === 'analyzing' ? '分析中' : activeTask.status}</Text>
-                  </div>
-                </div>
+                <AnalysisProgressPanel
+                  activeTask={activeTask}
+                  analyzing={analyzing}
+                  onStartAnalysis={startAnalysis}
+                />
               </Card>
             )}
           </div>

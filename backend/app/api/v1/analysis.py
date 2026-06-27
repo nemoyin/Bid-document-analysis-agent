@@ -177,12 +177,16 @@ async def list_analysis_tasks(
 async def get_analysis_task_detail(
     task_id: str,
     db: AsyncSession = Depends(get_db),
+    progress_only: bool = Query(default=False, description="仅返回进度字段（不含结果列表，适合轮询）"),
 ):
-    """获取分析任务详情（含各项分析结果）。"""
+    """获取分析任务详情（含各项分析结果）。传 ?progress_only=true 时仅返回进度数据。"""
     result = await db.execute(select(AnalysisTask).where(AnalysisTask.id == task_id))
     task = result.scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="分析任务不存在")
+
+    if progress_only:
+        return ApiResponse.success(data=AnalysisTaskResponse.model_validate(task))
 
     # 获取相似度结果
     sim_result = await db.execute(
@@ -215,6 +219,8 @@ async def get_analysis_task_detail(
         ],
     )
     return ApiResponse.success(data=response)
+
+
 
 
 # ============================================================

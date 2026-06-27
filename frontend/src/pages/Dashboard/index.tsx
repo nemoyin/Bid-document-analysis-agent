@@ -97,11 +97,14 @@ const Dashboard: React.FC = () => {
   const trendMap: Record<string, number> = {};
   stats.analysis_monthly_trend.forEach(t => { trendMap[t.month] = t.count; });
   const trendAnalysisCounts = stats.monthly_trend.map(t => trendMap[t.month] || 0);
-  const pieData = Object.entries(stats.risk_distribution).map(([k, v]) => ({
-    name: RISK_LABELS[k] || k,
-    value: v,
-    itemStyle: { color: RISK_COLORS[k] || '#999' },
-  }));
+  const pieData = Object.entries(stats.risk_distribution).map(([k, v]) => {
+    const key = k.toUpperCase();
+    return {
+      name: RISK_LABELS[key] || k,
+      value: v,
+      itemStyle: { color: RISK_COLORS[key] || '#999' },
+    };
+  });
 
   // ── 图表 option（纯数据对象，无函数） ──
   const trendOption = {

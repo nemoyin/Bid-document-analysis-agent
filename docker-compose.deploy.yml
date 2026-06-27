@@ -1,0 +1,74 @@
+# ============================================================
+# BASS-MVP 服务器部署专用 Compose 配置
+# 使用预构建镜像，不包含 build 指令
+# ============================================================
+# 部署步骤:
+#   1. docker load -i docker-images/bass-mvp-backend.tar
+#   2. docker load -i docker-images/bass-mvp-frontend.tar
+#   3. docker compose -f docker-compose.deploy.yml -p bass-mvp up -d
+# ============================================================
+
+services:
+  backend:
+    image: bass-mvp-backend:latest
+    container_name: bass-backend
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    environment:
+      APP_NAME: BASS-MVP
+      DEBUG: "false"
+      HOST: "0.0.0.0"
+      PORT: 8083
+      DATABASE_URL: sqlite+aiosqlite:///./data/bass.db
+      GITEE_AI_API_KEY: ${GITEE_AI_API_KEY:-}
+      GITEE_AI_BASE_URL: https://ai.gitee.com/v1
+      GITEE_AI_MODEL: Qwen3-Embedding-8B
+      CHROMA_DB_PATH: /app/backend/data/chromadb
+      UPLOAD_DIR: /app/backend/data/uploads
+      REPORT_DIR: /app/backend/data/reports
+      LOG_LEVEL: INFO
+      FRONTEND_DIST_DIR: /app/backend/data/frontend-dist
+      CORS_ORIGINS: '["*"]'
+      MAX_FILE_SIZE: "104857600"
+    volumes:
+      - bass_data:/app/backend/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://localhost:8083/api/v1/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - bass-network
+
+  frontend:
+    image: bass-mvp-frontend:latest
+    container_name: bass-frontend
+    restart: unless-stopped
+    ports:
+      - "5873:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - bass-network
+
+networks:
+  bass-network:
+    driver: bridge
+
+volumes:
+  bass_data:
+    driver: local

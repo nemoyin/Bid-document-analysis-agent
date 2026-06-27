@@ -9,7 +9,7 @@ import math
 import uuid
 from decimal import Decimal
 from io import BytesIO
-from typing import Any, Optional
+from typing import Any, Optional, Callable, Awaitable
 
 from loguru import logger
 
@@ -244,6 +244,7 @@ async def analyze_image_similarity(
     project_id: uuid.UUID,
     analysis_task_id: uuid.UUID,
     db_session_factory,
+    on_progress: Optional[Callable[[int], Awaitable[None]]] = None,
 ) -> int:
     """图片相似度分析主入口。
 
@@ -253,6 +254,7 @@ async def analyze_image_similarity(
         project_id: 项目ID
         analysis_task_id: 分析任务ID
         db_session_factory: 数据库会话工厂
+        on_progress: 可选的进度回调，参数为已完成对比图片对数
 
     Returns:
         int: 写入的图片相似结果数量
@@ -290,6 +292,8 @@ async def analyze_image_similarity(
 
             # 两两比较
             written_count = 0
+            total_img_pairs = len(all_images) * (len(all_images) - 1) // 2
+            img_pair_count = 0
             for i in range(len(all_images)):
                 for j in range(i + 1, len(all_images)):
                     img_i = all_images[i]
@@ -298,6 +302,8 @@ async def analyze_image_similarity(
                     # 跳过同一文档内的图片比较
                     if img_i["doc_id"] == img_j["doc_id"]:
                         continue
+
+                    img_pair_count += 1
 
                     # 计算三哈希
                     try:
@@ -341,6 +347,12 @@ async def analyze_image_similarity(
                         )
                         db.add(image_entry)
                         written_count += 1
+
+                    if on_progress and img_pair_count % max(1, total_img_pairs // 10) == 0:
+                        try:
+                            await on_progress(img_pair_count)
+                        except Exception:
+                            pass
 
             await db.commit()
             logger.info(

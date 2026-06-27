@@ -102,7 +102,7 @@ class Settings(BaseSettings):
 
     # ---- 文件上传 ----
     UPLOAD_DIR: str = "./data/uploads"
-    MAX_FILE_SIZE: int = 50 * 1024 * 1024  # 50MB
+    MAX_FILE_SIZE: int = 100 * 1024 * 1024  # 100MB
     ALLOWED_EXTENSIONS: list[str] = [".pdf", ".docx", ".doc"]
 
     # ---- 报告 ----

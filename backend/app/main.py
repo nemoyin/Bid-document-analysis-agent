@@ -19,8 +19,6 @@ from app.core.config import settings
 from app.core.logging import setup_logging
 from app.core.middleware import setup_middleware
 from app.services.chroma_manager import ChromaManager
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理。
@@ -64,8 +62,6 @@ async def lifespan(app: FastAPI):
             logger.info("ChromaDB 已关闭")
         except Exception as exc:
             logger.error(f"ChromaDB 关闭失败: {exc!s}")
-
-
 def create_app() -> FastAPI:
     """创建并配置 FastAPI 应用实例。
 
@@ -165,8 +161,6 @@ def create_app() -> FastAPI:
 
     logger.info(f"应用创建完成，监听 {settings.HOST}:{settings.PORT}")
     return app
-
-
 app = create_app()
 
 if __name__ == "__main__":
@@ -178,3 +172,4 @@ if __name__ == "__main__":
         port=settings.PORT,
         reload=settings.DEBUG,
     )
+

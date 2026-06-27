@@ -52,7 +52,7 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_db)):
     # ── 风险等级分布 ──
     risk_result = await db.execute(
         select(
-            func.coalesce(Project.risk_level, 'NONE').label('level'),
+            func.coalesce(func.upper(Project.risk_level), 'NONE').label('level'),
             func.count(Project.id).label('cnt'),
         ).group_by(text('level'))
     )
@@ -60,8 +60,26 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_db)):
         row.level: row.cnt
         for row in risk_result.all()
     }
+    # 补全所有风险等级（确保前端饼图/表格每个等级都有值）
+    for level in ('LOW', 'MODERATE', 'HIGH', 'CRITICAL', 'NONE'):
+        risk_distribution.setdefault(level, 0)
 
-    # ── 近6月任务创建趋势（按月） ──
+    # ── 近6月任务创建趋势（按月）──
+    # 先生成近 6 个月的完整月份列表（即使没有数据也包含）
+    all_months: list[str] = []
+    cursor = six_months_ago.replace(day=1)
+    while cursor <= now:
+        all_months.append(cursor.strftime('%Y-%m'))
+        # 推进到下个月 1 号
+        if cursor.month == 12:
+            cursor = cursor.replace(year=cursor.year + 1, month=1)
+        else:
+            cursor = cursor.replace(month=cursor.month + 1)
+    # 确保当前月被包含
+    current_month = now.strftime('%Y-%m')
+    if current_month not in all_months:
+        all_months.append(current_month)
+
     trend_result = await db.execute(
         select(
             func.strftime('%Y-%m', Project.created_at).label('month'),
@@ -71,9 +89,13 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_db)):
         .group_by(text('month'))
         .order_by(text('month'))
     )
-    monthly_trend = [
-        {"month": row.month, "count": row.cnt}
+    trend_map: dict[str, int] = {
+        row.month: row.cnt
         for row in trend_result.all()
+    }
+    monthly_trend = [
+        {"month": m, "count": trend_map.get(m, 0)}
+        for m in all_months
     ]
 
     # ── 分析任务统计 ──
@@ -108,7 +130,7 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_db)):
     avg_duration = avg_duration_result.scalar()
     avg_duration_seconds = round(float(avg_duration), 1) if avg_duration else 0
 
-    # 分析次数趋势（近6月按月）
+    # 分析次数趋势（近6月按月）—— 同样补全缺失月份
     analysis_trend_result = await db.execute(
         select(
             func.strftime('%Y-%m', AnalysisTask.created_at).label('month'),
@@ -118,9 +140,13 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_db)):
         .group_by(text('month'))
         .order_by(text('month'))
     )
-    analysis_monthly_trend = [
-        {"month": row.month, "count": row.cnt}
+    analysis_trend_map: dict[str, int] = {
+        row.month: row.cnt
         for row in analysis_trend_result.all()
+    }
+    analysis_monthly_trend = [
+        {"month": m, "count": analysis_trend_map.get(m, 0)}
+        for m in all_months
     ]
 
     return ApiResponse.success(data={

@@ -162,9 +162,13 @@ export const analysisApi = {
     return request<PaginatedResponse<AnalysisTask>>(`/analysis/tasks${qs ? `?${qs}` : ''}`);
   },
 
-  /** 获取任务详情 */
+  /** 获取任务详情（含所有结果，数据量大） */
   getDetail: (taskId: string) =>
     request<AnalysisTaskDetail>(`/analysis/tasks/${taskId}`),
+
+  /** 获取任务进度（仅进度字段，轻量，适合轮询） */
+  getProgress: (taskId: string) =>
+    request<AnalysisTask>(`/analysis/tasks/${taskId}?progress_only=true`),
 
   /** 获取相似度结果 */
   getSimilarityResults: (taskId: string) =>

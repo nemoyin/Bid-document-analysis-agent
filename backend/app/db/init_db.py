@@ -49,6 +49,13 @@ async def run_migrations() -> None:
         # (表名, 列名, 类型)
         ("image_similarity_results", "similar_image_path", "VARCHAR(500)"),
         ("bid_documents", "extracted_tables", "JSON"),
+        # 进度追踪新字段
+        ("analysis_tasks", "progress_detail", "JSON"),
+        ("analysis_tasks", "total_comparisons", "INTEGER DEFAULT 0"),
+        ("analysis_tasks", "completed_comparisons", "INTEGER DEFAULT 0"),
+        ("analysis_tasks", "issues_found", "INTEGER DEFAULT 0"),
+        ("analysis_tasks", "estimated_seconds", "INTEGER"),
+        ("analysis_tasks", "total_duration_ms", "INTEGER"),
     ]
     try:
         async with engine.connect() as conn:

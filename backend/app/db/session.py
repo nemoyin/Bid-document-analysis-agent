@@ -39,14 +39,20 @@ def _build_async_database_url() -> str:
 # 异步引擎
 ASYNC_DATABASE_URL = _build_async_database_url()
 
-engine = create_async_engine(
-    ASYNC_DATABASE_URL,
+# SQLite 不支持连接池参数，按数据库类型分别配置
+_is_sqlite = ASYNC_DATABASE_URL.startswith("sqlite")
+_engine_kwargs: dict = dict(
     echo=settings.DEBUG,
-    pool_size=10,
-    max_overflow=20,
-    pool_pre_ping=True,
-    pool_recycle=3600,
 )
+if not _is_sqlite:
+    _engine_kwargs.update(
+        pool_size=10,
+        max_overflow=20,
+        pool_pre_ping=True,
+        pool_recycle=3600,
+    )
+
+engine = create_async_engine(ASYNC_DATABASE_URL, **_engine_kwargs)
 
 # 异步会话工厂
 async_session_factory = async_sessionmaker(
