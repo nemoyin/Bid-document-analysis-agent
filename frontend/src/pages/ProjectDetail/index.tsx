@@ -13,6 +13,7 @@ import {
   BarChartOutlined, PictureOutlined, AlertOutlined,
   ReloadOutlined, DownloadOutlined, HomeOutlined, LoadingOutlined,
   MenuOutlined, TableOutlined, DatabaseOutlined,
+  ToolOutlined, SafetyOutlined,
 } from '@ant-design/icons';
 import type { UploadFile } from 'antd/es/upload/interface';
 import { projectApi, documentApi, analysisApi } from '../../services/api';
@@ -683,6 +684,165 @@ const ProjectDetail: React.FC = () => {
             <Text type="secondary">
               💡 元数据一致性分析比对文档的文件属性（作者、创建者、生成软件、公司、标题、修改者）。
               如果不同企业的标书具有相同的作者或创建软件，可能是围标串标的重要线索。
+            </Text>
+          </div>
+        </Card>
+      ),
+    },
+    // ── V1.1：模板复用 Tab ──
+    {
+      key: 'template-reuse',
+      label: <span><ToolOutlined /> 模板复用</span>,
+      children: (
+        <Card title="模板复用分析" bodyStyle={{ padding: 0 }}>
+          <Table
+            dataSource={activeTask?.template_reuse_results || []}
+            rowKey="id"
+            loading={loadingTasks}
+            pagination={false}
+            size="small"
+            locale={{ emptyText: <Empty description="暂无模板复用数据（需使用 DOCX/PDF 文件触发分析）" /> }}
+            columns={[
+              {
+                title: '文档A', dataIndex: 'doc1_id', key: 'doc1_id', width: 120, ellipsis: true,
+                render: (id: string) => <Text code>{id.slice(0, 8)}...</Text>,
+              },
+              {
+                title: '文档B', dataIndex: 'doc2_id', key: 'doc2_id', width: 120, ellipsis: true,
+                render: (id: string) => <Text code>{id.slice(0, 8)}...</Text>,
+              },
+              {
+                title: '模板复用度', dataIndex: 'reuse_score', key: 'reuse_score', width: 180,
+                render: (val: number | null) => {
+                  if (val === null || val === undefined) return <Tag>未分析</Tag>;
+                  const score = Number(val);
+                  const color = score >= 80 ? '#f5222d' : score >= 50 ? '#fa541c' : score >= 30 ? '#faad14' : '#52c41a';
+                  return (
+                    <Progress percent={score} size="small" strokeColor={color}
+                      format={p => `${Number(p ?? 0).toFixed(1)}%`} style={{ width: 150 }} />
+                  );
+                },
+              },
+              {
+                title: '样式匹配', dataIndex: 'style_match_score', key: 'style_match', width: 100,
+                render: (v: number | null) => v !== null ? `${Number(v).toFixed(1)}%` : '-',
+              },
+              {
+                title: '布局匹配', dataIndex: 'layout_match_score', key: 'layout_match', width: 100,
+                render: (v: number | null) => v !== null ? `${Number(v).toFixed(1)}%` : '-',
+              },
+              {
+                title: '标题匹配', dataIndex: 'heading_match_score', key: 'heading_match', width: 100,
+                render: (v: number | null) => v !== null ? `${Number(v).toFixed(1)}%` : '-',
+              },
+              {
+                title: '说明', key: 'note', width: 120,
+                render: (_: any, record: any) => {
+                  const s = record.reuse_score;
+                  if (s === null || s === undefined) return <Text type="secondary">需重新分析</Text>;
+                  const n = Number(s);
+                  if (n >= 80) return <Tag color="red">⚠ 高度复用</Tag>;
+                  if (n >= 50) return <Tag color="orange">疑似复用</Tag>;
+                  return <Tag color="green">模板独立</Tag>;
+                },
+              },
+            ]}
+          />
+          <div style={{ padding: 16, background: '#fafafa' }}>
+            <Text type="secondary">
+              💡 模板复用分析检测不同标书的文档模板相似度（字体样式、页边距布局、标题结构、分节方式）。
+              高度复用意味着多家投标人可能使用了相同的文档模板或由同一人制作标书。
+            </Text>
+          </div>
+        </Card>
+      ),
+    },
+    // ── V1.1：电子签名 Tab ──
+    {
+      key: 'electronic-signatures',
+      label: <span><SafetyOutlined /> 电子签名</span>,
+      children: (
+        <Card title="电子标书特征检测" bodyStyle={{ padding: 0 }}>
+          <div style={{ padding: '12px 16px', background: '#fff2f0', borderBottom: '1px solid #ffccc7' }}>
+            <Text style={{ color: '#cf1322' }}>
+              🛡️ 电子签名证据为 <Text strong>L1 级直接证据</Text>（可直接认定围串标）。
+              匹配项（✓）越多，围串标嫌疑越大。
+            </Text>
+          </div>
+          <Table
+            dataSource={activeTask?.electronic_signature_results || []}
+            rowKey="id"
+            loading={loadingTasks}
+            pagination={false}
+            size="small"
+            locale={{ emptyText: <Empty description="暂无电子签名数据（需在文档上传时捕获IP，且文档需含元数据）" /> }}
+            columns={[
+              {
+                title: '文档A', dataIndex: 'doc1_id', key: 'doc1_id', width: 120, ellipsis: true,
+                render: (id: string) => <Text code>{id.slice(0, 8)}...</Text>,
+              },
+              {
+                title: '文档B', dataIndex: 'doc2_id', key: 'doc2_id', width: 120, ellipsis: true,
+                render: (id: string) => <Text code>{id.slice(0, 8)}...</Text>,
+              },
+              {
+                title: '综合得分', dataIndex: 'signature_score', key: 'signature_score', width: 150,
+                render: (val: number | null) => {
+                  if (val === null || val === undefined) return <Tag>未分析</Tag>;
+                  const score = Number(val);
+                  const color = score >= 80 ? '#f5222d' : score >= 50 ? '#fa541c' : score >= 30 ? '#faad14' : '#52c41a';
+                  return (
+                    <Progress percent={score} size="small" strokeColor={color}
+                      format={p => `${Number(p ?? 0).toFixed(1)}%`} style={{ width: 120 }} />
+                  );
+                },
+              },
+              {
+                title: 'MAC', dataIndex: 'mac_match', key: 'mac', width: 60,
+                render: (v: boolean | null) => {
+                  if (v === null) return <Tag>?</Tag>;
+                  return v ? <Tag color="red">✓</Tag> : <Tag color="green">✗</Tag>;
+                },
+              },
+              {
+                title: 'IP', dataIndex: 'ip_match', key: 'ip', width: 60,
+                render: (v: boolean | null) => {
+                  if (v === null) return <Tag>?</Tag>;
+                  return v ? <Tag color="red">✓</Tag> : <Tag color="green">✗</Tag>;
+                },
+              },
+              {
+                title: '创建者', dataIndex: 'creator_match', key: 'creator', width: 70,
+                render: (v: boolean | null) => {
+                  if (v === null) return <Tag>?</Tag>;
+                  return v ? <Tag color="red">✓</Tag> : <Tag color="green">✗</Tag>;
+                },
+              },
+              {
+                title: '软件', dataIndex: 'software_match', key: 'software', width: 60,
+                render: (v: boolean | null) => {
+                  if (v === null) return <Tag>?</Tag>;
+                  return v ? <Tag color="red">✓</Tag> : <Tag color="green">✗</Tag>;
+                },
+              },
+              {
+                title: '匹配项', key: 'matched', width: 120,
+                render: (_: any, record: any) => {
+                  const items: string[] = [];
+                  if (record.mac_match) items.push('MAC');
+                  if (record.ip_match) items.push('IP');
+                  if (record.creator_match) items.push('创建者');
+                  if (record.software_match) items.push('软件');
+                  if (items.length === 0) return <Text type="secondary">无匹配</Text>;
+                  return <Space size={4}>{items.map(i => <Tag key={i} color="red">{i}</Tag>)}</Space>;
+                },
+              },
+            ]}
+          />
+          <div style={{ padding: 16, background: '#fafafa' }}>
+            <Text type="secondary">
+              💡 电子标书特征检测比对MAC地址（同一台电脑制作）、上传IP（同一网络）、文件创建者（同一人编辑）、编辑软件。
+              MAC或IP匹配属于L1级直接证据，可直接认定围标嫌疑。
             </Text>
           </div>
         </Card>

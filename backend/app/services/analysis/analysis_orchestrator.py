@@ -27,14 +27,16 @@ from app.schemas.common import RiskLevel
 # 配置文件路径
 _CONFIG_FILE: ClassVar[Path] = Path(settings.ROOT_DIR) / "data" / "analysis_config.json"
 
-# 6维度元数据：key, 显示名, 权重, 预计每对比秒数
+# 8维度元数据 (V1.1)：key, 显示名, 权重, 预计每对比秒数
 DIMENSIONS: ClassVar[list[dict[str, Any]]] = [
-    {"key": "text_similarity",      "weight": 0.30, "seconds_per": 5},
-    {"key": "structure_similarity", "weight": 0.15, "seconds_per": 3},
-    {"key": "image_similarity",     "weight": 0.15, "seconds_per": 8},
-    {"key": "table_similarity",     "weight": 0.10, "seconds_per": 5},
-    {"key": "error_consistency",    "weight": 0.20, "seconds_per": 10},
-    {"key": "metadata_consistency", "weight": 0.10, "seconds_per": 3},
+    {"key": "text_similarity",        "weight": 0.25, "seconds_per": 5},
+    {"key": "structure_similarity",   "weight": 0.10, "seconds_per": 3},
+    {"key": "image_similarity",       "weight": 0.12, "seconds_per": 8},
+    {"key": "table_similarity",       "weight": 0.08, "seconds_per": 5},
+    {"key": "error_consistency",      "weight": 0.15, "seconds_per": 10},
+    {"key": "metadata_consistency",   "weight": 0.08, "seconds_per": 3},
+    {"key": "template_reuse",         "weight": 0.10, "seconds_per": 8},
+    {"key": "electronic_signature",   "weight": 0.12, "seconds_per": 3},
 ]
 def _load_analysis_config() -> dict:
     """读取持久化的分析配置，如果文件不存在则使用代码默认值。"""
@@ -45,6 +47,8 @@ def _load_analysis_config() -> dict:
         "table_similarity_weight": settings.TABLE_SIMILARITY_WEIGHT,
         "error_consistency_weight": settings.ERROR_CONSISTENCY_WEIGHT,
         "metadata_consistency_weight": settings.METADATA_CONSISTENCY_WEIGHT,
+        "template_reuse_weight": 0.10,
+        "electronic_signature_weight": 0.12,
         "risk_low": settings.RISK_LEVEL_LOW,
         "risk_medium": settings.RISK_LEVEL_MEDIUM,
         "risk_high": settings.RISK_LEVEL_HIGH,
@@ -374,12 +378,12 @@ class AnalysisOrchestrator:
         table_score: float,
         error_score: float,
         metadata_score: float,
+        template_reuse_score: float = 0.0,
+        electronic_signature_score: float = 0.0,
     ) -> float:
-        """计算综合风险评分（6维度，PRD REQ-016）。
+        """计算综合风险评分（V1.1：8维度）。
 
-        公式 (权重和为 1.0，对应满分 100 分):
-            text(30%) + structure(15%) + image(15%)
-            + table(10%) + error(20%) + metadata(10%)
+        公式 (权重和为 1.0，对应满分 100 分)
 
         Args:
             text_score: 文本相似度评分 (0.0 - 1.0)
@@ -388,17 +392,21 @@ class AnalysisOrchestrator:
             table_score: 表格相似度评分 (0.0 - 1.0)
             error_score: 错误一致性评分 (0.0 - 1.0)
             metadata_score: 元数据一致性评分 (0.0 - 1.0)
+            template_reuse_score: 模板复用评分 (0.0 - 1.0) [V1.1]
+            electronic_signature_score: 电子签名评分 (0.0 - 1.0) [V1.1]
 
         Returns:
             float: 综合风险评分 (0.0 - 1.0)
         """
         cfg = _load_analysis_config()
-        tw = cfg.get("text_similarity_weight", 0.30)
-        sw = cfg.get("structure_similarity_weight", 0.15)
-        iw = cfg.get("image_similarity_weight", 0.15)
-        tbw = cfg.get("table_similarity_weight", 0.10)
-        ew = cfg.get("error_consistency_weight", 0.20)
-        mw = cfg.get("metadata_consistency_weight", 0.10)
+        tw = cfg.get("text_similarity_weight", 0.25)
+        sw = cfg.get("structure_similarity_weight", 0.10)
+        iw = cfg.get("image_similarity_weight", 0.12)
+        tbw = cfg.get("table_similarity_weight", 0.08)
+        ew = cfg.get("error_consistency_weight", 0.15)
+        mw = cfg.get("metadata_consistency_weight", 0.08)
+        trw = cfg.get("template_reuse_weight", 0.10)
+        esw = cfg.get("electronic_signature_weight", 0.12)
 
         risk = (
             text_score * tw
@@ -407,6 +415,8 @@ class AnalysisOrchestrator:
             + table_score * tbw
             + error_score * ew
             + metadata_score * mw
+            + template_reuse_score * trw
+            + electronic_signature_score * esw
         )
         return min(max(risk, 0.0), 1.0)
 
@@ -745,7 +755,75 @@ class AnalysisOrchestrator:
         finally:
             await self._update_dimension_status(task_id, "metadata_consistency", "completed",
                 completed=doc_pairs)
-        logger.info(f"[阶段8/9] 元数据一致性分析完成: {metadata_result_count} 条结果")
+        logger.info(f"[阶段8/10] 元数据一致性分析完成: {metadata_result_count} 条结果")
+
+        # ---- 阶段8.1：模板复用分析 (V1.1) ----
+        await self._update_progress_detail(task_id, {
+            "current_dimension": "template_reuse",
+        })
+        await self._update_dimension_status(task_id, "template_reuse", "running")
+        template_reuse_result_count = 0
+
+        _tmpl_last_reported = [0]
+        async def _on_template_reuse_progress(completed: int) -> None:
+            inc = completed - _tmpl_last_reported[0]
+            _tmpl_last_reported[0] = completed
+            if inc > 0:
+                await self._increment_dimension_progress(
+                    task_id, "template_reuse", increment=inc,
+                )
+
+        try:
+            from app.services.analysis.template_reuse import analyze_template_reuse
+            template_reuse_result_count = await analyze_template_reuse(
+                project_id=project_id,
+                analysis_task_id=task_id,
+                db_session_factory=self.db_session_factory,
+                on_progress=_on_template_reuse_progress,
+            )
+            result["template_reuse_count"] = template_reuse_result_count
+        except Exception as exc:
+            logger.error(f"[阶段8.1/10] 模板复用分析失败: {exc!s}")
+        finally:
+            await self._update_dimension_status(task_id, "template_reuse", "completed",
+                completed=doc_pairs)
+        logger.info(f"[阶段8.1/10] 模板复用分析完成: {template_reuse_result_count} 条结果")
+
+        # ---- 阶段8.2：电子标书特征检测 (V1.1) ----
+        await self._update_progress_detail(task_id, {
+            "current_dimension": "electronic_signature",
+        })
+        await self._update_dimension_status(task_id, "electronic_signature", "running")
+        electronic_signature_result_count = 0
+
+        _esig_last_reported = [0]
+        async def _on_electronic_signature_progress(completed: int) -> None:
+            inc = completed - _esig_last_reported[0]
+            _esig_last_reported[0] = completed
+            if inc > 0:
+                await self._increment_dimension_progress(
+                    task_id, "electronic_signature", increment=inc,
+                )
+
+        try:
+            from app.services.analysis.electronic_signature import (
+                analyze_electronic_signature,
+            )
+            electronic_signature_result_count = await analyze_electronic_signature(
+                project_id=project_id,
+                analysis_task_id=task_id,
+                db_session_factory=self.db_session_factory,
+                on_progress=_on_electronic_signature_progress,
+            )
+            result["electronic_signature_count"] = electronic_signature_result_count
+        except Exception as exc:
+            logger.error(f"[阶段8.2/10] 电子标书特征检测失败: {exc!s}")
+        finally:
+            await self._update_dimension_status(task_id, "electronic_signature", "completed",
+                completed=doc_pairs)
+        logger.info(
+            f"[阶段8.2/10] 电子标书特征检测完成: {electronic_signature_result_count} 条结果"
+        )
 
         # ---- 阶段9：综合评分 ----
         try:
@@ -755,16 +833,19 @@ class AnalysisOrchestrator:
         except Exception:
             pass  # 进度更新失败不影响最终评分
 
-        # 计算各维度评分（6维度）
+        # 计算各维度评分（V1.1：8维度）
         text_score = await self._compute_text_score(task_id)
         structure_score = await self._compute_structure_score(task_id)
         image_score = self._compute_image_score(image_result_count)
         table_score = await self._compute_table_score(task_id)
         error_score = self._compute_error_score(error_result_count)
         metadata_score = await self._compute_metadata_score(task_id)
+        template_reuse_score = await self._compute_template_reuse_score(task_id)
+        electronic_signature_score = await self._compute_electronic_signature_score(task_id)
         combined_score = self.calculate_risk_score(
             text_score, structure_score, image_score,
             table_score, error_score, metadata_score,
+            template_reuse_score, electronic_signature_score,
         )
         risk_level = self.risk_to_level(combined_score)
 
@@ -774,6 +855,8 @@ class AnalysisOrchestrator:
         result["table_score"] = round(table_score, 4)
         result["error_score"] = round(error_score, 4)
         result["metadata_score"] = round(metadata_score, 4)
+        result["template_reuse_score"] = round(template_reuse_score, 4)
+        result["electronic_signature_score"] = round(electronic_signature_score, 4)
         result["risk_score"] = round(combined_score, 4)
         result["risk_level"] = risk_level.value
 
@@ -806,7 +889,7 @@ class AnalysisOrchestrator:
                             )
                         except Exception:
                             task.total_duration_ms = 0
-                    # 6维度评分写入 error_message 字段（JSON 格式）
+                    # 8维度评分写入 error_message 字段（JSON 格式）[V1.1]
                     import json as _json
                     task.error_message = _json.dumps({
                         "text_score": round(text_score, 4),
@@ -815,6 +898,8 @@ class AnalysisOrchestrator:
                         "table_score": round(table_score, 4),
                         "error_score": round(error_score, 4),
                         "metadata_score": round(metadata_score, 4),
+                        "template_reuse_score": round(template_reuse_score, 4),
+                        "electronic_signature_score": round(electronic_signature_score, 4),
                     }, ensure_ascii=False)
                     # 同步更新项目的风险等级和评分
                     from app.models.project import Project
@@ -1005,6 +1090,68 @@ class AnalysisOrchestrator:
                 return 0.0
         except Exception as exc:
             logger.error(f"计算元数据一致性评分失败: {exc!s}")
+            return 0.0
+
+    async def _compute_template_reuse_score(
+        self, task_id: uuid.UUID
+    ) -> float:
+        """计算模板复用评分 (V1.1)。
+
+        从 TemplateReuseResult 表读取 reuse_score，取最高值。
+
+        Args:
+            task_id: 分析任务ID
+
+        Returns:
+            float: 评分 (0.0 - 1.0)
+        """
+        try:
+            from app.models.analysis import TemplateReuseResult
+            from sqlalchemy import select, func as sa_func
+
+            async with self.db_session_factory() as db:
+                query = select(
+                    sa_func.max(TemplateReuseResult.reuse_score)
+                ).where(TemplateReuseResult.task_id == task_id)
+                result = await db.execute(query)
+                max_val = result.scalar()
+                if max_val is not None:
+                    val = float(max_val) / 100.0
+                    return min(max(val, 0.0), 1.0)
+                return 0.0
+        except Exception as exc:
+            logger.error(f"计算模板复用评分失败: {exc!s}")
+            return 0.0
+
+    async def _compute_electronic_signature_score(
+        self, task_id: uuid.UUID
+    ) -> float:
+        """计算电子标书特征评分 (V1.1)。
+
+        从 ElectronicSignatureResult 表读取 signature_score，取最高值。
+
+        Args:
+            task_id: 分析任务ID
+
+        Returns:
+            float: 评分 (0.0 - 1.0)
+        """
+        try:
+            from app.models.analysis import ElectronicSignatureResult
+            from sqlalchemy import select, func as sa_func
+
+            async with self.db_session_factory() as db:
+                query = select(
+                    sa_func.max(ElectronicSignatureResult.signature_score)
+                ).where(ElectronicSignatureResult.task_id == task_id)
+                result = await db.execute(query)
+                max_val = result.scalar()
+                if max_val is not None:
+                    val = float(max_val) / 100.0
+                    return min(max(val, 0.0), 1.0)
+                return 0.0
+        except Exception as exc:
+            logger.error(f"计算电子标书特征评分失败: {exc!s}")
             return 0.0
 
     def _compute_image_score(self, result_count: int) -> float:

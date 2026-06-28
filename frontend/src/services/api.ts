@@ -3,7 +3,7 @@
  * 基于 fetch 的统一请求层，自动处理响应格式和错误。
  */
 
-import type { ApiResponse, Project, BidDocument, AnalysisTask, AnalysisTaskDetail, SimilarityResult, ErrorDetectionResult, ImageSimilarityResult, PaginatedResponse, HealthCheck, ProjectCreateRequest, ProjectUpdateRequest, AnalysisTaskCreateRequest } from '../types';
+import type { ApiResponse, Project, BidDocument, AnalysisTask, AnalysisTaskDetail, SimilarityResult, ErrorDetectionResult, ImageSimilarityResult, TemplateReuseResult, ElectronicSignatureResult, PaginatedResponse, HealthCheck, ProjectCreateRequest, ProjectUpdateRequest, AnalysisTaskCreateRequest } from '../types';
 
 // ============================================================
 // 基础配置
@@ -181,6 +181,14 @@ export const analysisApi = {
   /** 获取图片相似结果 */
   getImageResults: (taskId: string) =>
     request<ImageSimilarityResult[]>(`/analysis/tasks/${taskId}/images`),
+
+  /** V1.1: 获取模板复用分析结果 */
+  getTemplateReuseResults: (taskId: string) =>
+    request<TemplateReuseResult[]>(`/analysis/tasks/${taskId}/template-reuse`),
+
+  /** V1.1: 获取电子标书特征检测结果 */
+  getElectronicSignatureResults: (taskId: string) =>
+    request<ElectronicSignatureResult[]>(`/analysis/tasks/${taskId}/electronic-signatures`),
 };
 
 // ============================================================

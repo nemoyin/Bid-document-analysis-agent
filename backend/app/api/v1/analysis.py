@@ -19,6 +19,8 @@ from app.models.analysis import (
     SimilarityResult,
     ErrorDetectionResult,
     ImageSimilarityResult,
+    TemplateReuseResult,
+    ElectronicSignatureResult,
 )
 from app.schemas.common import ApiResponse, PaginatedResponse
 from app.schemas.analysis import (
@@ -28,6 +30,8 @@ from app.schemas.analysis import (
     SimilarityResultResponse,
     ErrorDetectionResultResponse,
     ImageSimilarityResultResponse,
+    TemplateReuseResultResponse,
+    ElectronicSignatureResultResponse,
 )
 from app.services.analysis.analysis_orchestrator import AnalysisOrchestrator
 
@@ -206,6 +210,18 @@ async def get_analysis_task_detail(
     )
     image_results = img_result.scalars().all()
 
+    # 获取模板复用结果 (V1.1)
+    tmpl_result = await db.execute(
+        select(TemplateReuseResult).where(TemplateReuseResult.task_id == task_id)
+    )
+    template_reuse_results = tmpl_result.scalars().all()
+
+    # 获取电子签名结果 (V1.1)
+    esig_result = await db.execute(
+        select(ElectronicSignatureResult).where(ElectronicSignatureResult.task_id == task_id)
+    )
+    electronic_signature_results = esig_result.scalars().all()
+
     response = AnalysisTaskDetailResponse(
         **AnalysisTaskResponse.model_validate(task).model_dump(),
         similarity_results=[
@@ -216,6 +232,13 @@ async def get_analysis_task_detail(
         ],
         image_similarity_results=[
             ImageSimilarityResultResponse.model_validate(r) for r in image_results
+        ],
+        template_reuse_results=[
+            TemplateReuseResultResponse.model_validate(r) for r in template_reuse_results
+        ],
+        electronic_signature_results=[
+            ElectronicSignatureResultResponse.model_validate(r)
+            for r in electronic_signature_results
         ],
     )
     return ApiResponse.success(data=response)
@@ -289,4 +312,50 @@ async def get_image_similarity_results(
     items = result.scalars().all()
     return ApiResponse.success(
         data=[ImageSimilarityResultResponse.model_validate(r) for r in items]
+    )
+
+
+# ============================================================
+# 模板复用结果 (V1.1)
+# ============================================================
+
+
+@router.get(
+    "/tasks/{task_id}/template-reuse",
+    response_model=ApiResponse[list[TemplateReuseResultResponse]],
+)
+async def get_template_reuse_results(
+    task_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """获取分析任务的模板复用分析结果列表 (V1.1)。"""
+    result = await db.execute(
+        select(TemplateReuseResult).where(TemplateReuseResult.task_id == task_id)
+    )
+    items = result.scalars().all()
+    return ApiResponse.success(
+        data=[TemplateReuseResultResponse.model_validate(r) for r in items]
+    )
+
+
+# ============================================================
+# 电子标书特征检测结果 (V1.1)
+# ============================================================
+
+
+@router.get(
+    "/tasks/{task_id}/electronic-signatures",
+    response_model=ApiResponse[list[ElectronicSignatureResultResponse]],
+)
+async def get_electronic_signature_results(
+    task_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """获取分析任务的电子标书特征检测结果列表 (V1.1)。"""
+    result = await db.execute(
+        select(ElectronicSignatureResult).where(ElectronicSignatureResult.task_id == task_id)
+    )
+    items = result.scalars().all()
+    return ApiResponse.success(
+        data=[ElectronicSignatureResultResponse.model_validate(r) for r in items]
     )

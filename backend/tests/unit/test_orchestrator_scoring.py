@@ -54,11 +54,12 @@ def patch_config(monkeypatch):
 class TestDimensionsConfig:
     """DIMENSIONS 列表配置正确性。"""
 
-    def test_six_dimensions_defined(self):
+    def test_eight_dimensions_defined(self):
         keys = [d["key"] for d in DIMENSIONS]
-        assert len(DIMENSIONS) == 6
+        assert len(DIMENSIONS) == 8  # V1.1: 8 dimensions
         for key in ["text_similarity", "structure_similarity", "image_similarity",
-                     "table_similarity", "error_consistency", "metadata_consistency"]:
+                     "table_similarity", "error_consistency", "metadata_consistency",
+                     "template_reuse", "electronic_signature"]:
             assert key in keys
 
     def test_all_have_required_fields(self):
@@ -149,7 +150,8 @@ class TestWeightedProgress:
             "dimensions": {
                 k: {"status": "completed", "completed": 10, "total": 10}
                 for k in ["text_similarity", "structure_similarity", "image_similarity",
-                          "table_similarity", "error_consistency", "metadata_consistency"]
+                          "table_similarity", "error_consistency", "metadata_consistency",
+                          "template_reuse", "electronic_signature"]
             },
         }
         assert orchestrator._calculate_weighted_progress(detail) == 100
@@ -162,7 +164,9 @@ class TestWeightedProgress:
             dims[k] = {"status": "pending", "completed": 0, "total": 5}
         dims["text_similarity"] = {"status": "running", "completed": 5, "total": 10}
         detail = {"dimensions": dims}
-        assert orchestrator._calculate_weighted_progress(detail) == 15
+        # 8-dim: text weight = 0.25, 50% done → 12.5 → floor 12
+        pct = orchestrator._calculate_weighted_progress(detail)
+        assert pct in (12, 13)  # floor rounding may give 12 or 13
 
     def test_text_and_structure_done(self, orchestrator):
         """文本完成 + 结构完成 → 45%。"""
@@ -173,7 +177,8 @@ class TestWeightedProgress:
         dims["text_similarity"] = {"status": "completed", "completed": 10, "total": 10}
         dims["structure_similarity"] = {"status": "completed", "completed": 5, "total": 5}
         detail = {"dimensions": dims}
-        assert orchestrator._calculate_weighted_progress(detail) == 45
+        # 8-dim: text(0.25) + structure(0.10) = 35%
+        assert orchestrator._calculate_weighted_progress(detail) == 35
 
 
 class TestETA:

@@ -110,13 +110,16 @@ export interface DimensionMeta {
   weight: number;
 }
 
+/** V1.1: 8维度元数据 */
 export const DIMENSION_META: DimensionMeta[] = [
-  { key: 'text_similarity',      label: '文本相似度',   icon: '📝', weight: 30 },
-  { key: 'structure_similarity', label: '目录结构相似', icon: '📑', weight: 15 },
-  { key: 'image_similarity',     label: '图片相似度',   icon: '🖼️', weight: 15 },
-  { key: 'table_similarity',     label: '表格相似度',   icon: '📊', weight: 10 },
-  { key: 'error_consistency',    label: '错别字一致性', icon: '✏️', weight: 20 },
-  { key: 'metadata_consistency', label: '元数据一致性', icon: '📋', weight: 10 },
+  { key: 'text_similarity',        label: '文本相似度',     icon: '📝', weight: 25 },
+  { key: 'structure_similarity',   label: '目录结构相似',   icon: '📑', weight: 10 },
+  { key: 'image_similarity',       label: '图片相似度',     icon: '🖼️', weight: 12 },
+  { key: 'table_similarity',       label: '表格相似度',     icon: '📊', weight: 8 },
+  { key: 'error_consistency',      label: '错别字一致性',   icon: '✏️', weight: 15 },
+  { key: 'metadata_consistency',   label: '元数据一致性',   icon: '📋', weight: 8 },
+  { key: 'template_reuse',         label: '模板复用',       icon: '🔧', weight: 10 },
+  { key: 'electronic_signature',   label: '电子签名',       icon: '🛡️', weight: 12 },
 ];
 
 /** 分析任务 */
@@ -146,6 +149,8 @@ export interface AnalysisTask {
     table_score: number;
     error_score: number;
     metadata_score: number;
+    template_reuse_score: number;
+    electronic_signature_score: number;
   } | null;
 }
 
@@ -197,9 +202,41 @@ export interface ImageSimilarityResult {
   similarity_score: number | null;
 }
 
-/** 分析任务详情（含各项结果） */
+/** V1.1: 模板复用分析结果 */
+export interface TemplateReuseResult {
+  id: string;
+  task_id: string;
+  doc1_id: string;
+  doc2_id: string;
+  reuse_score: number | null;
+  style_match_score: number | null;
+  layout_match_score: number | null;
+  heading_match_score: number | null;
+  section_match_score: number | null;
+  details: any | null;
+  created_at?: string;
+}
+
+/** V1.1: 电子标书特征检测结果 */
+export interface ElectronicSignatureResult {
+  id: string;
+  task_id: string;
+  doc1_id: string;
+  doc2_id: string;
+  signature_score: number | null;
+  mac_match: boolean | null;
+  ip_match: boolean | null;
+  creator_match: boolean | null;
+  software_match: boolean | null;
+  details: any | null;
+  created_at?: string;
+}
+
+/** 分析任务详情（含各项结果）[V1.1] */
 export interface AnalysisTaskDetail extends AnalysisTask {
   similarity_results: SimilarityResult[];
   error_detection_results: ErrorDetectionResult[];
   image_similarity_results: ImageSimilarityResult[];
+  template_reuse_results: TemplateReuseResult[];
+  electronic_signature_results: ElectronicSignatureResult[];
 }
