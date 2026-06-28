@@ -1,6 +1,7 @@
 """
 分析引擎模块
-提供文本相似度、目录结构相似度、图片相似度、表格相似度、错误检测、元数据一致性六大分析引擎及编排器。
+提供文本相似度、目录结构相似度、图片相似度、表格相似度、错误检测、
+元数据一致性、模板复用七大分析引擎及编排器。
 """
 
 from app.services.analysis.analysis_orchestrator import AnalysisOrchestrator
@@ -37,6 +38,16 @@ from app.services.analysis.metadata_consistency import (
     compare_metadata,
     analyze_metadata_consistency,
 )
+from app.services.analysis.template_reuse import (
+    extract_docx_template_features,
+    compare_template_features,
+    analyze_template_reuse,
+)
+from app.services.analysis.electronic_signature import (
+    extract_electronic_signatures,
+    compare_electronic_signatures,
+    analyze_electronic_signature,
+)
 from app.services.analysis.models import (
     SimilarityPair,
     DocumentSimilarityReport,
@@ -67,6 +78,12 @@ __all__ = [
     "analyze_errors",
     "compare_metadata",
     "analyze_metadata_consistency",
+    "extract_docx_template_features",
+    "compare_template_features",
+    "analyze_template_reuse",
+    "extract_electronic_signatures",
+    "compare_electronic_signatures",
+    "analyze_electronic_signature",
     "SimilarityPair",
     "DocumentSimilarityReport",
     "TypoResult",

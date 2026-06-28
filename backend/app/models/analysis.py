@@ -111,6 +111,16 @@ class AnalysisTask(Base, TimestampMixin):
         back_populates="analysis_task",
         cascade="all, delete-orphan",
     )
+    template_reuse_results: Mapped[list["TemplateReuseResult"]] = relationship(
+        "TemplateReuseResult",
+        back_populates="analysis_task",
+        cascade="all, delete-orphan",
+    )
+    electronic_signature_results: Mapped[list["ElectronicSignatureResult"]] = relationship(
+        "ElectronicSignatureResult",
+        back_populates="analysis_task",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return (
@@ -315,4 +325,121 @@ class ImageSimilarityResult(Base, TimestampMixin):
         return (
             f"<ImageSimilarityResult(id={self.id}, doc={self.document_id}, "
             f"hash={self.image_hash[:16]}...)>"
+        )
+
+
+class TemplateReuseResult(Base, TimestampMixin):
+    """模板复用分析结果表，检测不同标书是否使用相同文档模板。"""
+
+    __tablename__ = "template_reuse_results"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True,
+        default=lambda: str(uuid.uuid4()), comment="结果ID",
+    )
+    task_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("analysis_tasks.id", ondelete="CASCADE"),
+        nullable=False, comment="所属分析任务ID",
+    )
+    doc1_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("bid_documents.id", ondelete="CASCADE"),
+        nullable=False, comment="文档A ID",
+    )
+    doc2_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("bid_documents.id", ondelete="CASCADE"),
+        nullable=False, comment="文档B ID",
+    )
+    reuse_score: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(5, 2), nullable=True, comment="模板复用度 0.00-100.00",
+    )
+    style_match_score: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(5, 2), nullable=True, comment="样式匹配度 (字体/段落/颜色)",
+    )
+    layout_match_score: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(5, 2), nullable=True, comment="布局匹配度 (页边距/页眉/页脚)",
+    )
+    heading_match_score: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(5, 2), nullable=True, comment="标题层级匹配度",
+    )
+    section_match_score: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(5, 2), nullable=True, comment="节结构匹配度",
+    )
+    details: Mapped[Optional[dict]] = mapped_column(
+        JSON, nullable=True, comment="详细分析结果 (样式列表/差异项)",
+    )
+
+    # 关系
+    analysis_task: Mapped["AnalysisTask"] = relationship(
+        "AnalysisTask", back_populates="template_reuse_results",
+    )
+    doc1: Mapped["BidDocument"] = relationship(
+        "BidDocument", foreign_keys=[doc1_id],
+    )
+    doc2: Mapped["BidDocument"] = relationship(
+        "BidDocument", foreign_keys=[doc2_id],
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<TemplateReuseResult(id={self.id}, doc1={self.doc1_id}, "
+            f"doc2={self.doc2_id}, reuse={self.reuse_score})>"
+        )
+
+
+class ElectronicSignatureResult(Base, TimestampMixin):
+    """电子标书特征检测结果表，检测机器码/IP/创建者ID等电子证据。"""
+
+    __tablename__ = "electronic_signature_results"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True,
+        default=lambda: str(uuid.uuid4()), comment="结果ID",
+    )
+    task_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("analysis_tasks.id", ondelete="CASCADE"),
+        nullable=False, comment="所属分析任务ID",
+    )
+    doc1_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("bid_documents.id", ondelete="CASCADE"),
+        nullable=False, comment="文档A ID",
+    )
+    doc2_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("bid_documents.id", ondelete="CASCADE"),
+        nullable=False, comment="文档B ID",
+    )
+    signature_score: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(5, 2), nullable=True, comment="电子签名一致性得分 0.00-100.00",
+    )
+    mac_match: Mapped[Optional[bool]] = mapped_column(
+        Boolean, nullable=True, comment="MAC地址是否匹配 (None=无法获取)",
+    )
+    ip_match: Mapped[Optional[bool]] = mapped_column(
+        Boolean, nullable=True, comment="上传IP是否匹配 (None=无法获取)",
+    )
+    creator_match: Mapped[Optional[bool]] = mapped_column(
+        Boolean, nullable=True, comment="文件创建者ID是否匹配",
+    )
+    software_match: Mapped[Optional[bool]] = mapped_column(
+        Boolean, nullable=True, comment="编辑软件版本是否一致",
+    )
+    details: Mapped[Optional[dict]] = mapped_column(
+        JSON, nullable=True,
+        comment="详细证据 (mac_addresses, ip_addresses, creator_ids, ...)",
+    )
+
+    # 关系
+    analysis_task: Mapped["AnalysisTask"] = relationship(
+        "AnalysisTask", back_populates="electronic_signature_results",
+    )
+    doc1: Mapped["BidDocument"] = relationship(
+        "BidDocument", foreign_keys=[doc1_id],
+    )
+    doc2: Mapped["BidDocument"] = relationship(
+        "BidDocument", foreign_keys=[doc2_id],
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<ElectronicSignatureResult(id={self.id}, doc1={self.doc1_id}, "
+            f"doc2={self.doc2_id}, score={self.signature_score})>"
         )

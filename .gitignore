@@ -33,4 +33,4 @@ test_data/
 Thumbs.db
 
 # Logs
-*.log
+*.logdocker-images/*.tar

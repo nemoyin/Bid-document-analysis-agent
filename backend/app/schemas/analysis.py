@@ -139,7 +139,53 @@ class ImageSimilarityResultResponse(BaseModel):
 
 
 # ============================================================
-# 分析任务详情（依赖以上所有 Result 类型，放在最后）
+# 模板复用结果 Schema
+# ============================================================
+
+
+class TemplateReuseResultResponse(BaseModel):
+    """模板复用分析结果响应。"""
+
+    id: uuid.UUID = Field(..., description="结果ID")
+    task_id: uuid.UUID = Field(..., description="分析任务ID")
+    doc1_id: uuid.UUID = Field(..., description="文档A ID")
+    doc2_id: uuid.UUID = Field(..., description="文档B ID")
+    reuse_score: Optional[Decimal] = Field(default=None, description="模板复用度 0-100")
+    style_match_score: Optional[Decimal] = Field(default=None, description="样式匹配度")
+    layout_match_score: Optional[Decimal] = Field(default=None, description="布局匹配度")
+    heading_match_score: Optional[Decimal] = Field(default=None, description="标题匹配度")
+    section_match_score: Optional[Decimal] = Field(default=None, description="节匹配度")
+    details: Optional[dict] = Field(default=None, description="详细对比结果")
+    created_at: Optional[datetime] = Field(default=None, description="创建时间")
+
+    model_config = {"from_attributes": True}
+
+
+# ============================================================
+# 电子标书特征检测结果 Schema
+# ============================================================
+
+
+class ElectronicSignatureResultResponse(BaseModel):
+    """电子标书特征检测结果响应。"""
+
+    id: uuid.UUID = Field(..., description="结果ID")
+    task_id: uuid.UUID = Field(..., description="分析任务ID")
+    doc1_id: uuid.UUID = Field(..., description="文档A ID")
+    doc2_id: uuid.UUID = Field(..., description="文档B ID")
+    signature_score: Optional[Decimal] = Field(default=None, description="电子签名一致性 0-100")
+    mac_match: Optional[bool] = Field(default=None, description="MAC地址匹配 (None=无法获取)")
+    ip_match: Optional[bool] = Field(default=None, description="IP地址匹配")
+    creator_match: Optional[bool] = Field(default=None, description="创建者匹配")
+    software_match: Optional[bool] = Field(default=None, description="编辑软件匹配")
+    details: Optional[dict] = Field(default=None, description="详细证据")
+    created_at: Optional[datetime] = Field(default=None, description="创建时间")
+
+    model_config = {"from_attributes": True}
+
+
+# ============================================================
+# 分析任务详情
 # ============================================================
 
 
@@ -154,6 +200,12 @@ class AnalysisTaskDetailResponse(AnalysisTaskResponse):
     )
     image_similarity_results: list[ImageSimilarityResultResponse] = Field(
         default_factory=list, description="图片相似结果"
+    )
+    template_reuse_results: list[TemplateReuseResultResponse] = Field(
+        default_factory=list, description="模板复用分析结果"
+    )
+    electronic_signature_results: list[ElectronicSignatureResultResponse] = Field(
+        default_factory=list, description="电子标书特征检测结果"
     )
 
 
