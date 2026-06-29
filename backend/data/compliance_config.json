@@ -1,0 +1,86 @@
+{
+  "clause_types": [
+    {"id": "qualification", "label": "资格条件", "active": true},
+    {"id": "performance", "label": "业绩要求", "active": true},
+    {"id": "technical", "label": "技术要求", "active": true},
+    {"id": "timeline", "label": "时间节点", "active": true},
+    {"id": "scoring", "label": "评分标准", "active": true},
+    {"id": "contract", "label": "合同条款", "active": true},
+    {"id": "other", "label": "其他", "active": true}
+  ],
+  "scoring": {
+    "initial_score": 100,
+    "red_deduction": 20,
+    "yellow_deduction": 8,
+    "risk_low": 85,
+    "risk_medium": 60,
+    "risk_high": 40
+  },
+  "default_rules": [
+    {
+      "id": "R01", "name": "发售期不足", "category": "deterministic",
+      "is_active": true, "default_risk": "red", "weight": 0.20,
+      "conditions": {"clause_type": "timeline", "field": "天数", "field_label": "发售期"},
+      "params": {"min_days": 5},
+      "legal_basis": [{"law": "招投标法实施条例", "article": "第16条", "content": "资格预审文件或者招标文件的发售期不得少于5日"}]
+    },
+    {
+      "id": "R02", "name": "资质要求过高", "category": "deterministic",
+      "is_active": true, "default_risk": "yellow", "weight": 0.15,
+      "conditions": {"clause_type": "qualification"},
+      "params": {"max_grade": 2},
+      "legal_basis": [{"law": "招投标法", "article": "第18条", "content": "招标人不得以不合理的条件限制或者排斥潜在投标人"}]
+    },
+    {
+      "id": "R03", "name": "业绩门槛过高", "category": "deterministic",
+      "is_active": true, "default_risk": "yellow", "weight": 0.15,
+      "conditions": {"clause_type": "performance"},
+      "params": {"amount_multiplier": 2.0, "max_years": 3},
+      "legal_basis": [{"law": "招投标法实施条例", "article": "第32条", "content": "招标人不得以不合理的条件限制、排斥潜在投标人或者投标人"}]
+    },
+    {
+      "id": "R04", "name": "品牌指向性", "category": "deterministic",
+      "is_active": true, "default_risk": "red", "weight": 0.20,
+      "conditions": {"clause_type": "technical"},
+      "params": {"min_brands": 3, "equivalent_keywords": ["或同等", "或相当于", "或类似"]},
+      "legal_basis": [{"law": "招投标法实施条例", "article": "第32条", "content": "限定或者指定特定的专利、商标、品牌、原产地或者供应商"}]
+    },
+    {
+      "id": "R05", "name": "主观分过高", "category": "deterministic",
+      "is_active": true, "default_risk": "yellow", "weight": 0.10,
+      "conditions": {"clause_type": "scoring"},
+      "params": {"max_subjective_ratio": 0.40},
+      "legal_basis": [{"law": "招投标法", "article": "第18条", "content": "招标人不得以不合理的条件限制或者排斥潜在投标人"}]
+    },
+    {
+      "id": "R07", "name": "保证金过高", "category": "deterministic",
+      "is_active": true, "default_risk": "yellow", "weight": 0.10,
+      "conditions": {"clause_type": "contract"},
+      "params": {"max_ratio": 0.02},
+      "legal_basis": [{"law": "招投标法实施条例", "article": "第26条", "content": "投标保证金不得超过招标项目估算价的2%"}]
+    },
+    {
+      "id": "R08", "name": "地域限制", "category": "deterministic",
+      "is_active": true, "default_risk": "red", "weight": 0.15,
+      "conditions": {"clause_type": ["qualification", "performance", "scoring"]},
+      "params": {"region_keywords": ["本地", "本省", "本市", "本地区", "当地", "属地"]},
+      "legal_basis": [{"law": "招投标法实施条例", "article": "第32条", "content": "限定或者指定特定的专利、商标、品牌、原产地或者供应商"}]
+    },
+    {
+      "id": "R10", "name": "隐性排他条款", "category": "llm_semantic",
+      "is_active": true, "default_risk": "yellow", "weight": 0.15,
+      "conditions": {"clause_type": ["qualification", "performance", "technical"]},
+      "params": {},
+      "legal_basis": [{"law": "招投标法", "article": "第18条", "content": "招标人不得以不合理的条件限制或者排斥潜在投标人"}],
+      "llm_prompt": "你是一名招投标合规审查专家。请判断以下招标文件条款是否构成对特定投标人的隐性排他或歧视。\n条款原文：\n---\n{clause_text}\n---\n条款类型：{clause_type}\n结构化参数：{params}\n\n请从以下维度分析：\n1. 该条款是否超出项目实际需要\n2. 该条款是否客观上只有极少数企业能满足\n3. 该条款是否含有不合理的限制\n\n输出 JSON：{\"risk\": \"red|yellow|green\", \"reason\": \"判断理由(50字以内)\", \"confidence\": 0.0-1.0}"
+    },
+    {
+      "id": "R11", "name": "萝卜坑综合研判", "category": "llm_semantic",
+      "is_active": true, "default_risk": "red", "weight": 0.20,
+      "conditions": {"clause_type": ["qualification", "performance", "technical", "scoring"]},
+      "params": {"min_clauses": 3},
+      "legal_basis": [{"law": "招投标法实施条例", "article": "第32条", "content": "招标人不得以不合理的条件限制、排斥潜在投标人或者投标人"}],
+      "llm_prompt": "你是一名招投标合规审查专家。请综合研判以下招标文件的多个条款组合，是否构成'量体裁衣'——即多个条款的组合形成唯一指向，只有特定投标人能够同时满足。\n\n以下条款已被确定性规则标记为异常：\n---\n{clauses_summary}\n---\n\n请判断：这些条款组合是否构成'萝卜坑'？\n输出 JSON：{\"risk\": \"red|yellow|green\", \"reason\": \"综合研判理由(100字以内)\", \"confidence\": 0.0-1.0, \"suspect_bidder_profile\": \"可能受益的投标人画像(如可推断)\"}"
+    }
+  ]
+}
