@@ -74,4 +74,30 @@ async def get_compliance_result(
     analysis = result.scalar_one_or_none()
     if not analysis:
         raise HTTPException(status_code=404, detail="分析任务不存在")
-    return ApiResponse.success(data=ComplianceAnalysisResponse.model_validate(analysis))
+
+    # 单独查询 clauses 避免 async lazy-load 问题
+    clause_stmt = (
+        select(ComplianceClause)
+        .where(ComplianceClause.analysis_id == analysis_id)
+        .order_by(ComplianceClause.created_at)
+    )
+    clause_result = await db.execute(clause_stmt)
+    clauses = clause_result.scalars().all()
+
+    # 手动构建响应，避免 relationship lazy-load
+    return ApiResponse.success(data=ComplianceAnalysisResponse(
+        id=analysis.id,
+        project_id=analysis.project_id,
+        document_id=analysis.document_id,
+        status=analysis.status,
+        progress=analysis.progress,
+        compliance_score=analysis.compliance_score,
+        risk_level=analysis.risk_level,
+        clause_count=analysis.clause_count,
+        violation_count=analysis.violation_count,
+        error_message=analysis.error_message,
+        started_at=analysis.started_at,
+        completed_at=analysis.completed_at,
+        created_at=analysis.created_at,
+        clauses=[ComplianceClauseResponse.model_validate(c) for c in clauses],
+    ))

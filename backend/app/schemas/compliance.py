@@ -1,5 +1,4 @@
 """合规审查 Schemas"""
-import uuid
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional
@@ -8,8 +7,8 @@ from pydantic import BaseModel, Field
 
 
 class ComplianceClauseResponse(BaseModel):
-    id: uuid.UUID
-    analysis_id: uuid.UUID
+    id: str
+    analysis_id: str
     clause_type: str
     original_text: str
     location: Optional[dict] = None
@@ -20,9 +19,9 @@ class ComplianceClauseResponse(BaseModel):
 
 
 class ComplianceAnalysisResponse(BaseModel):
-    id: uuid.UUID
-    project_id: uuid.UUID
-    document_id: uuid.UUID
+    id: str
+    project_id: str
+    document_id: str
     status: str
     progress: int = 0
     compliance_score: Optional[Decimal] = None
@@ -32,7 +31,7 @@ class ComplianceAnalysisResponse(BaseModel):
     error_message: Optional[str] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
-    created_at: datetime
+    created_at: Optional[datetime] = None
     clauses: list[ComplianceClauseResponse] = Field(default_factory=list)
     model_config = {"from_attributes": True}
 

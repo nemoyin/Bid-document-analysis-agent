@@ -240,3 +240,33 @@ export interface AnalysisTaskDetail extends AnalysisTask {
   template_reuse_results: TemplateReuseResult[];
   electronic_signature_results: ElectronicSignatureResult[];
 }
+
+/** V2.0: 合规审查条款 */
+export interface ComplianceClause {
+  id: string;
+  analysis_id: string;
+  clause_type: string;
+  original_text: string;
+  location: any;
+  params: any;
+  risk_level: string | null;
+  matched_rules: any;
+}
+
+/** V2.0: 合规审查分析 */
+export interface ComplianceAnalysis {
+  id: string;
+  project_id: string;
+  document_id: string;
+  status: string;
+  progress: number;
+  compliance_score: number | null;
+  risk_level: string | null;
+  clause_count: number;
+  violation_count: number;
+  error_message: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+  clauses: ComplianceClause[];
+}

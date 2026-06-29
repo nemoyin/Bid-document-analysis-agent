@@ -16,13 +16,14 @@ import {
   ToolOutlined, SafetyOutlined,
 } from '@ant-design/icons';
 import type { UploadFile } from 'antd/es/upload/interface';
-import { projectApi, documentApi, analysisApi } from '../../services/api';
-import type { Project, BidDocument, AnalysisTask, AnalysisTaskDetail } from '../../types';
+import { projectApi, documentApi, analysisApi, complianceApi } from '../../services/api';
+import type { Project, BidDocument, AnalysisTask, AnalysisTaskDetail, ComplianceAnalysis } from '../../types';
 import { RISK_LEVEL_COLORS, RISK_LEVEL_LABELS } from '../../types';
 import RiskOverviewCard from './components/RiskOverviewCard';
 import SimilarityTable from './components/SimilarityTable';
 import ImageGallery from './components/ImageGallery';
 import AnalysisProgressPanel from './components/AnalysisProgressPanel';
+import CompliancePanel from './components/CompliancePanel';
 import styles from './index.module.css';
 
 const { Title, Text } = Typography;
@@ -35,6 +36,9 @@ const ProjectDetail: React.FC = () => {
   const [documents, setDocuments] = useState<BidDocument[]>([]);
   const [tasks, setTasks] = useState<AnalysisTask[]>([]);
   const [activeTask, setActiveTask] = useState<AnalysisTaskDetail | null>(null);
+  // V2.0: 合规审查
+  const [complianceAnalysis, setComplianceAnalysis] = useState<ComplianceAnalysis | null>(null);
+  const [loadingCompliance, setLoadingCompliance] = useState(false);
   const [loadingProject, setLoadingProject] = useState(true);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [loadingTasks, setLoadingTasks] = useState(false);
@@ -264,6 +268,42 @@ const ProjectDetail: React.FC = () => {
       metadataScore = dim.metadata_score || 0;
     }
   } catch { /* ignore */ }
+
+  // ── V2.0: 合规审查 ──
+
+  const pollCompliance = (analysisId: string) => {
+    const timer = setInterval(async () => {
+      try {
+        const result = await complianceApi.getResult(analysisId);
+        setComplianceAnalysis(result);
+        if (result.status === 'completed' || result.status === 'failed') {
+          clearInterval(timer);
+          setLoadingCompliance(false);
+        }
+      } catch {
+        clearInterval(timer);
+        setLoadingCompliance(false);
+      }
+    }, 2000);
+  };
+
+  const startComplianceAnalysis = async () => {
+    if (!projectId) return;
+    const parsedDocs = documents.filter(d => d.parse_status === 'completed');
+    if (parsedDocs.length === 0) {
+      message.warning('请先上传并解析招标文件');
+      return;
+    }
+    setLoadingCompliance(true);
+    try {
+      const result = await complianceApi.start(projectId, parsedDocs[0].id);
+      setComplianceAnalysis(result);
+      pollCompliance(result.id);
+    } catch {
+      message.error('启动合规审查失败');
+      setLoadingCompliance(false);
+    }
+  };
 
   // ── Tab 配置 ──
 
@@ -855,6 +895,18 @@ const ProjectDetail: React.FC = () => {
             </Text>
           </div>
         </Card>
+      ),
+    },
+    // ── V2.0：合规审查 Tab ──
+    {
+      key: 'compliance',
+      label: <span><SafetyOutlined /> 合规审查</span>,
+      children: (
+        <CompliancePanel
+          analysis={complianceAnalysis}
+          loading={loadingCompliance}
+          onStart={startComplianceAnalysis}
+        />
       ),
     },
   ];

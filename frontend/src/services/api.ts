@@ -3,7 +3,7 @@
  * 基于 fetch 的统一请求层，自动处理响应格式和错误。
  */
 
-import type { ApiResponse, Project, BidDocument, AnalysisTask, AnalysisTaskDetail, SimilarityResult, ErrorDetectionResult, ImageSimilarityResult, TemplateReuseResult, ElectronicSignatureResult, PaginatedResponse, HealthCheck, ProjectCreateRequest, ProjectUpdateRequest, AnalysisTaskCreateRequest } from '../types';
+import type { ApiResponse, Project, BidDocument, AnalysisTask, AnalysisTaskDetail, SimilarityResult, ErrorDetectionResult, ImageSimilarityResult, TemplateReuseResult, ElectronicSignatureResult, ComplianceAnalysis, PaginatedResponse, HealthCheck, ProjectCreateRequest, ProjectUpdateRequest, AnalysisTaskCreateRequest } from '../types';
 
 // ============================================================
 // 基础配置
@@ -204,4 +204,21 @@ export const reportApi = {
   /** 获取报告数据 */
   getReportData: (projectId: string, taskId: string) =>
     request<any>(`/projects/${projectId}/reports/data?task_id=${taskId}`),
+};
+
+// ============================================================
+// 合规审查 API (V2.0)
+// ============================================================
+
+export const complianceApi = {
+  /** 启动合规审查 */
+  start: (projectId: string, documentId: string) =>
+    request<ComplianceAnalysis>('/compliance/analyze', {
+      method: 'POST',
+      body: JSON.stringify({ project_id: projectId, document_id: documentId }),
+    }),
+
+  /** 获取审查结果 */
+  getResult: (analysisId: string) =>
+    request<ComplianceAnalysis>(`/compliance/${analysisId}`),
 };
