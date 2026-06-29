@@ -160,11 +160,20 @@ const ProjectDetail: React.FC = () => {
 
       if (pollRef.current) clearInterval(pollRef.current);
 
-      // 轮询重试计数
+      // 轮询重试计数 + 最大轮询时长保护（30 分钟）
       let retryCount = 0;
       const MAX_RETRIES = 5;
+      const pollStart = Date.now();
+      const MAX_POLL_MS = 30 * 60 * 1000;
 
       pollRef.current = setInterval(async () => {
+        // 客户端超时保护：防止服务端卡住时前端计时器永远运行
+        if (Date.now() - pollStart > MAX_POLL_MS) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          setAnalyzing(false);
+          message.error('分析超时（超过30分钟），请检查后端日志或减少文件数量后重试');
+          return;
+        }
         try {
           // 使用轻量进度接口轮询
           const progress = await analysisApi.getProgress(task.id);

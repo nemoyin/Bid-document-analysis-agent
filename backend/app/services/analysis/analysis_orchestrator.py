@@ -98,7 +98,7 @@ class AnalysisOrchestrator:
                     task.progress = progress
                     if error_message:
                         task.error_message = error_message
-                    if status == "analyzing":
+                    if status == "analyzing" and task.started_at is None:
                         task.started_at = datetime.now(timezone.utc)
                     elif status in ("completed", "failed"):
                         task.completed_at = datetime.now(timezone.utc)
@@ -446,15 +446,44 @@ class AnalysisOrchestrator:
         self,
         project_id: uuid.UUID,
         analysis_task_id: uuid.UUID,
+        timeout: int = 1800,
     ) -> dict[str, Any]:
-        """执行完整分析流程（主编排函数）。
+        """执行完整分析流程（带超时保护）。
 
-        阶段：
-        1. 初始化（pending→analyzing）
-        2. 文本相似度分析 (0-35%)
-        3. 图片相似度分析 (35-55%)
-        4. 错误检测分析 (55-80%)
-        5. 综合评分 (80-100%)
+        内部调用 `_run_analysis_pipeline`，超时（默认 30 分钟）后
+        自动将任务标记为失败，防止分析卡住时计时器永远运行。
+
+        Args:
+            project_id: 项目ID
+            analysis_task_id: 分析任务ID
+            timeout: 超时秒数（默认 1800 = 30 分钟）
+
+        Returns:
+            dict: 分析结果汇总
+        """
+        task_id = analysis_task_id
+        try:
+            return await asyncio.wait_for(
+                self._run_analysis_pipeline(project_id, analysis_task_id),
+                timeout=timeout,
+            )
+        except asyncio.TimeoutError:
+            logger.error(f"分析任务超时 ({timeout}s): task={task_id}")
+            try:
+                await self._update_task_status(
+                    task_id, "failed",
+                    error_message=f"分析超时（超过 {timeout // 60} 分钟），请减少文件数量后重试",
+                )
+            except Exception:
+                pass
+            return {"status": "failed", "error": "timeout"}
+
+    async def _run_analysis_pipeline(
+        self,
+        project_id: uuid.UUID,
+        analysis_task_id: uuid.UUID,
+    ) -> dict[str, Any]:
+        """执行完整分析流程（主编排函数，无超时保护）。
 
         Args:
             project_id: 项目ID
